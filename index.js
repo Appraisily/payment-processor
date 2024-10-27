@@ -9,9 +9,13 @@ const app = express();
 
 // Function to initialize the app with loaded config
 async function initializeApp() {
-  let config;
   try {
-    config = await loadConfig();
+    // Validate required environment variables
+    if (!process.env.GOOGLE_CLOUD_PROJECT_ID) {
+      throw new Error('GOOGLE_CLOUD_PROJECT_ID environment variable is not set');
+    }
+
+    const config = await loadConfig();
     
     // Initialize SendGrid
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
@@ -22,7 +26,7 @@ async function initializeApp() {
     });
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // Middleware to parse JSON bodies for non-webhook routes
+    // Middleware setup
     app.use((req, res, next) => {
       if (req.originalUrl === '/stripe-webhook') {
         next();
@@ -31,17 +35,20 @@ async function initializeApp() {
       }
     });
 
+    // Health check endpoint - must be first to ensure quick startup probe response
+    app.get('/', (req, res) => {
+      res.status(200).send('OK');
+    });
+
     // Stripe Webhook Handler
     app.post('/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-      console.log('Webhook handler started');
-      
       const sig = req.headers['stripe-signature'];
       let event;
       let mode = 'Unknown';
 
       try {
-        if (!req.body) {
-          throw new Error('No request body received');
+        if (!req.body || !sig) {
+          throw new Error('Missing request body or signature');
         }
 
         // Initialize Stripe with Test Secret Key
@@ -50,22 +57,17 @@ async function initializeApp() {
         try {
           event = stripeTest.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
           mode = 'Test';
-          console.log('Webhook verified in Test mode');
         } catch (testErr) {
-          console.log('Test mode verification failed, trying Live mode');
           const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
           event = stripeLive.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
           mode = 'Live';
-          console.log('Webhook verified in Live mode');
         }
 
         if (event.type === 'checkout.session.completed') {
           await handleCheckoutSession(event.data.object, mode, auth, sheets, config);
-          res.status(200).send('OK');
-        } else {
-          console.log(`Unhandled event type: ${event.type}`);
-          res.status(200).send('OK');
         }
+        
+        res.status(200).send('OK');
       } catch (err) {
         await quickLog(config, err.message, {
           severity: 'Error',
@@ -78,19 +80,23 @@ async function initializeApp() {
             mode 
           })
         });
-        res.status(400).send(`Webhook Error: ${err.message}`);
+        res.status(400).send('Webhook Error');
       }
-    });
-
-    // Health check endpoint
-    app.get('/', (req, res) => {
-      res.send('Cloud Run service is up and running.');
     });
 
     // Start the server
     const PORT = process.env.PORT || 8080;
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT}`);
+    });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+      });
     });
 
   } catch (err) {
@@ -99,7 +105,6 @@ async function initializeApp() {
   }
 }
 
-// Handle checkout session completion
 async function handleCheckoutSession(session, mode, auth, sheets, config) {
   const {
     id: session_id,
@@ -115,7 +120,6 @@ async function handleCheckoutSession(session, mode, auth, sheets, config) {
   const sessionDate = new Date(created * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
 
   try {
-    // Authenticate with Google Sheets
     const authClient = await auth.getClient();
     google.options({ auth: authClient });
 
@@ -136,16 +140,8 @@ async function handleCheckoutSession(session, mode, auth, sheets, config) {
       return;
     }
 
-    // Get product details
     const productDetails = config.PAYMENT_LINKS[payment_link] || { productName: 'Unknown Product' };
-    if (!config.PAYMENT_LINKS[payment_link]) {
-      await quickLog(config, `Unknown payment link: ${payment_link}`, {
-        severity: 'Warning',
-        errorCode: 'UnknownPaymentLink',
-        environment: mode
-      });
-    }
-
+    
     // Record sale
     await sheets.spreadsheets.values.append({
       spreadsheetId: config.SALES_SPREADSHEET_ID,
@@ -199,7 +195,6 @@ async function handleCheckoutSession(session, mode, auth, sheets, config) {
       },
     });
 
-    console.log(`Processing completed for session ${session_id}`);
   } catch (err) {
     await logError(config, {
       timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
@@ -215,7 +210,7 @@ async function handleCheckoutSession(session, mode, auth, sheets, config) {
         error: err.response?.body || err.message 
       }),
     });
-    throw err; // Re-throw to be handled by the webhook handler
+    throw err;
   }
 }
 
