@@ -14,7 +14,7 @@ async function initializeApp() {
   try {
     const config = await loadConfig();
 
-    // Configura SendGrid con la API Key
+    // Configura SendGrid con la API Key una sola vez
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
 
     // Middleware para parsear cuerpos JSON para rutas que no sean webhooks
@@ -28,18 +28,19 @@ async function initializeApp() {
       let event;
 
       try {
-        // Recupera el secreto de webhook basado en el modo (Test o Live)
-        // Primero, intenta verificar con el secreto de prueba
+        // Inicializa Stripe con ambas claves (Test y Live)
         const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
+        const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
+
+        // Intenta construir el evento usando la clave de prueba
         try {
-          event = stripeTest.webhooks.constructEvent(req.body, sig, config.SENDGRID_WEBHOOK_SECRET_TEST);
+          event = stripeTest.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
           event.mode = 'Test';
           console.log('Evento verificado en modo Test');
         } catch (testErr) {
           console.warn('Fallo al verificar con el secreto de prueba, intentando modo Live:', testErr.message);
-          // Si falla, intenta verificar con el secreto en vivo
-          const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
-          event = stripeLive.webhooks.constructEvent(req.body, sig, config.SENDGRID_WEBHOOK_SECRET_LIVE);
+          // Si falla, intenta con la clave Live
+          event = stripeLive.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
           event.mode = 'Live';
           console.log('Evento verificado en modo Live');
         }
@@ -87,9 +88,6 @@ async function initializeApp() {
           // Determina el modo basado en el evento
           const mode = event.mode; // 'Test' o 'Live'
           console.log(`Procesando evento en modo: ${mode}`);
-
-          // Configura SendGrid con la API Key (ya configurada al inicio)
-          // No necesitas cambiar la API Key de SendGrid ya que usas una sola
 
           // Autentica con Google Sheets
           const auth = new google.auth.GoogleAuth({
@@ -200,7 +198,7 @@ async function initializeApp() {
 
           console.log('Nueva sesión añadida a la hoja de Pending Appraisals');
 
-          // **Enviar Email al Cliente Usando el Template Dinámico de SendGrid**
+          // **Enviar Email al Cliente Usando el Template Dinámico de SendGrid **
           const currentYear = new Date().getFullYear();
 
           console.log(`Monto Pagado: ${parseFloat((amountTotal / 100).toFixed(2))} (Tipo: ${typeof parseFloat((amountTotal / 100).toFixed(2))})`);
@@ -208,7 +206,7 @@ async function initializeApp() {
           const emailContent = {
             to: customerEmail,
             from: config.EMAIL_SENDER, // Email verificado
-            templateId: sendGridTemplateId, // Template ID basado en el modo
+            templateId: config.SENDGRID_TEMPLATE_ID, // Template ID único
             dynamic_template_data: {
               customer_name: customerName,
               session_id: session_id,
@@ -258,11 +256,11 @@ async function initializeApp() {
       app.listen(PORT, () => {
         console.log(`Servidor escuchando en el puerto ${PORT}`);
       });
-    } catch (error) {
-      console.error('Fallo al inicializar la aplicación:', error);
-      process.exit(1);
-    }
+  } catch (error) {
+    console.error('Fallo al inicializar la aplicación:', error);
+    process.exit(1);
   }
+}
 
-  // Inicia la inicialización
-  initializeApp();
+// Inicia la inicialización
+initializeApp();
