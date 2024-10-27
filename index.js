@@ -199,29 +199,26 @@ app.post('/stripe-webhook', express.raw({ type: 'application/json' }), async (re
 
       console.log('New session appended to Pending Appraisals sheet');
 
-      // **Send Email to Customer Using SendGrid Dynamic Template**
-      const currentYear = new Date().getFullYear();
+// **Enviar Email al Cliente Usando el Template Dinámico de SendGrid**
+const currentYear = new Date().getFullYear();
 
-      console.log(`Appending Amount Paid: ${parseFloat((amountTotal / 100).toFixed(2))} (Type: ${typeof parseFloat((amountTotal / 100).toFixed(2))})`);
+console.log(`Monto Pagado: ${parseFloat((amountTotal / 100).toFixed(2))} (Tipo: ${typeof parseFloat((amountTotal / 100).toFixed(2))})`);
 
-      const emailContent = {
-        to: customerEmail,
-        from: config.EMAIL_SENDER, // Verified sender email
-        templateId: config.SENDGRID_TEMPLATE_ID, // Dynamic Template ID
-        dynamic_template_data: {
-          customer_name: customerName,
-          total_paid: (amountTotal / 100).toFixed(2),
-          currency: currency.toUpperCase(),
-          customer_email: customerEmail,
-          session_id: session_id,
-          current_year: currentYear, // New dynamic variable
-        },
-      };
+const emailContent = {
+  to: customerEmail,
+  from: config.EMAIL_SENDER, // Email verificado en SendGrid
+  templateId: config.SENDGRID_TEMPLATE_ID, // d-e1efdd3a8eb84500ba389c81f0b08d56 (actualizado)
+  dynamic_template_data: {
+    customer_name: customerName,
+    session_id: session_id,
+    current_year: currentYear, // Variable dinámica
+  },
+};
 
-      await sendGridMail.send(emailContent);
-      console.log(`Confirmation email sent to ${customerEmail}`);
+await sendGridMail.send(emailContent);
+console.log(`Email de confirmación enviado a ${customerEmail}`);
 
-      res.status(200).send('OK');
+res.status(200).send('OK');
     } catch (err) {
       console.error('Error processing webhook:', err);
       // Log detailed SendGrid error
