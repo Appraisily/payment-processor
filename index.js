@@ -1,11 +1,9 @@
-// index.js
-
 const express = require('express');
 const { google } = require('googleapis');
 const stripeModule = require('stripe');
 const sendGridMail = require('@sendgrid/mail');
 const { logError } = require('./errorLogger');
-const loadConfig = require('./config'); // Import the updated config.js
+const loadConfig = require('./config');
 
 const app = express();
 
@@ -91,8 +89,8 @@ async function initializeApp() {
         currency,
         customer_details: { email: customerEmail = '', name: customerName = '' },
         created,
-        payment_link, // Extract the payment_link from the session
-        metadata, // If any metadata is used
+        payment_link,
+        metadata,
       } = session;
 
       const sessionDate = new Date(created * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
@@ -121,7 +119,7 @@ async function initializeApp() {
             stackTrace: '',
             userId: '',
             requestId: req.headers['x-request-id'] || '',
-            environment: mode, // Indicates Test or Live
+            environment: mode,
             endpoint: req.originalUrl || '',
             additionalContext: JSON.stringify({ session_id, paymentIntentId }),
             resolutionStatus: 'Open',
@@ -133,7 +131,7 @@ async function initializeApp() {
         }
 
         // Determine the product purchased based on the payment_link
-        let productDetails = config.PAYMENT_LINKS[payment_link || '']; // Ensure payment_link exists
+        let productDetails = config.PAYMENT_LINKS[payment_link || ''];
 
         if (!productDetails) {
           console.warn(`No product mapping found for payment_link: ${payment_link}`);
@@ -146,7 +144,7 @@ async function initializeApp() {
             stackTrace: '',
             userId: '',
             requestId: req.headers['x-request-id'] || '',
-            environment: mode, // Indicates Test or Live
+            environment: mode,
             endpoint: req.originalUrl || '',
             additionalContext: JSON.stringify({ payment_link }),
             resolutionStatus: 'Open',
@@ -154,7 +152,6 @@ async function initializeApp() {
             chatGPT: config.CHATGPT_CHAT_URL,
             resolutionLink: config.RESOLUTION_LINK,
           });
-          // Proceed with a default product name
           productDetails = { productName: 'Unknown Product' };
         }
 
@@ -163,19 +160,19 @@ async function initializeApp() {
         // Append to Sales sheet
         await sheets.spreadsheets.values.append({
           spreadsheetId: config.SALES_SPREADSHEET_ID,
-          range: `${config.SALES_SHEET_NAME}!A:H`, // Columns A to H
+          range: `${config.SALES_SHEET_NAME}!A:H`,
           valueInputOption: 'USER_ENTERED',
           insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[
-              session_id,                         // Column A: Session ID
-              paymentIntentId,                    // Column B: Payment Intent ID
-              customer,                           // Column C: Customer ID
-              customerName,                       // Column D: Customer Name
-              customerEmail,                      // Column E: Customer Email
-              parseFloat((amountTotal / 100).toFixed(2)),  // Column F: Amount Paid
-              sessionDate,                        // Column G: Session Date
-              mode,                               // Column H: Mode (Test or Live)
+              session_id,
+              paymentIntentId,
+              customer,
+              customerName,
+              customerEmail,
+              parseFloat((amountTotal / 100).toFixed(2)),
+              sessionDate,
+              mode,
             ]],
           },
         });
@@ -185,39 +182,39 @@ async function initializeApp() {
         // Append to Pending Appraisals sheet
         await sheets.spreadsheets.values.append({
           spreadsheetId: config.PENDING_APPRAISALS_SPREADSHEET_ID,
-          range: `${config.PENDING_APPRAISALS_SHEET_NAME}!A:F`, // Columns A to F
+          range: `${config.PENDING_APPRAISALS_SHEET_NAME}!A:F`,
           valueInputOption: 'USER_ENTERED',
           insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[
-              new Date(created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }), // Column A: Date
-              productName, // Column B: Product Purchased
-              session_id,   // Column C: Session ID
-              customerEmail, // Column D: Customer Email
-              customerName,  // Column E: Customer Name
-              'PENDING INFO', // Column F: Status
+              new Date(created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }),
+              productName,
+              session_id,
+              customerEmail,
+              customerName,
+              'PENDING INFO',
             ]],
           },
         });
 
         console.log('New session appended to Pending Appraisals sheet');
 
-        // **Send Email to Customer Using SendGrid Dynamic Template**
+        // Send Email to Customer Using SendGrid Dynamic Template
         const currentYear = new Date().getFullYear();
 
         console.log(`Appending Amount Paid: ${parseFloat((amountTotal / 100).toFixed(2))} (Type: ${typeof parseFloat((amountTotal / 100).toFixed(2))})`);
 
         const emailContent = {
           to: customerEmail,
-          from: config.EMAIL_SENDER, // Verified sender email
-          templateId: config.SENDGRID_TEMPLATE_ID, // Dynamic Template ID
+          from: config.EMAIL_SENDER,
+          templateId: config.SENDGRID_TEMPLATE_ID,
           dynamic_template_data: {
             customer_name: customerName,
             total_paid: (amountTotal / 100).toFixed(2),
             currency: currency.toUpperCase(),
             customer_email: customerEmail,
             session_id: session_id,
-            current_year: currentYear, // New dynamic variable
+            current_year: currentYear,
           },
         };
 
@@ -227,7 +224,6 @@ async function initializeApp() {
         res.status(200).send('OK');
       } catch (err) {
         console.error('Error processing webhook:', err);
-        // Log detailed SendGrid error
         await logError(config, {
           timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
           severity: 'Error',
@@ -237,7 +233,7 @@ async function initializeApp() {
           stackTrace: err.stack || '',
           userId: '',
           requestId: req.headers['x-request-id'] || '',
-          environment: mode, // Indicates Test or Live
+          environment: mode,
           endpoint: req.originalUrl || '',
           additionalContext: JSON.stringify({ 
             session_id, 
@@ -251,18 +247,22 @@ async function initializeApp() {
         });
         res.status(500).send('Internal Server Error');
       }
-    });
+    } else {
+      // Handle other event types if needed
+      res.status(200).send('OK');
+    }
+  });
 
-    // Optional: Health check endpoint
-    app.get('/', (req, res) => {
-      res.send('Cloud Run service is up and running.');
-    });
+  // Optional: Health check endpoint
+  app.get('/', (req, res) => {
+    res.send('Cloud Run service is up and running.');
+  });
 
-    // Start the server
-    const PORT = process.env.PORT || 8080;
-    app.listen(PORT, () => {
-      console.log(`Server listening on port ${PORT}`);
-    });
+  // Start the server
+  const PORT = process.env.PORT || 8080;
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
 }
 
 // Initialize the app and handle any startup errors
