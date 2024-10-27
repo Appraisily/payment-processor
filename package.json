@@ -1,18 +1,20 @@
 {
-  "name": "payment-processor",
+  "name": "cloud-run-stripe-webhook",
   "version": "1.0.0",
   "description": "Stripe webhook handler for Cloud Run",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-{
   "dependencies": {
+    "@google-cloud/secret-manager": "^4.0.0",
     "@sendgrid/mail": "^7.7.0",
     "express": "^4.18.2",
     "googleapis": "^110.0.0",
-    "stripe": "^10.17.0",
-    "@google-cloud/secret-manager": "^4.0.0" 
-  }
+    "stripe": "^10.17.0"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "license": "ISC"
 }
-
