@@ -1,0 +1,15 @@
+{
+  "name": "payment-processor",
+  "version": "1.0.0",
+  "description": "Stripe webhook handler for Cloud Run",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^7.7.0",
+    "express": "^4.18.2",
+    "googleapis": "^110.0.0",
+    "stripe": "^10.17.0"
+  }
+}
