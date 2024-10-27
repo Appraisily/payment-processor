@@ -6,7 +6,7 @@ WORKDIR /usr/src/app
 
 # Install dependencies.
 COPY package*.json ./
-RUN npm install --production
+RUN npm install --omit=dev
 
 # Copy local code to the container image.
 COPY . .
