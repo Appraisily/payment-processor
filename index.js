@@ -263,16 +263,10 @@ async function initializeApp() {
     app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT}`);
     });
-  }
-
-  // Initialize the app and handle any startup errors
-  try {
-    await initializeApp();
-  } catch (error) {
-    console.error('Failed to initialize application:', error);
-    process.exit(1);
-  }
 }
 
-// Start the initialization
-initializeApp();
+// Initialize the app and handle any startup errors
+initializeApp().catch(error => {
+  console.error('Failed to initialize application:', error);
+  process.exit(1);
+});
