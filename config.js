@@ -1,5 +1,7 @@
 // config.js
 
+require('dotenv').config(); // Asegúrate de tener instalado 'dotenv' y un archivo .env
+
 const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 
 const client = new SecretManagerServiceClient();
@@ -18,7 +20,7 @@ async function getSecret(secretName) {
 
   try {
     const [version] = await client.accessSecretVersion({ name });
-    const payload = version.payload.data.toString('utf8');
+    const payload = version.payload.data.toString('utf8').trim(); // Trim para eliminar espacios y saltos de línea
     return payload;
   } catch (error) {
     console.error(`Error accediendo al secreto ${secretName}:`, error);
@@ -57,12 +59,12 @@ async function loadConfig() {
     // Configuración de SendGrid
     SENDGRID_API_KEY: await getSecret('SENDGRID_API_KEY'),
     EMAIL_SENDER: await getSecret('SENDGRID_EMAIL'),
-    SENDGRID_TEMPLATE_ID: await getSecret('SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED'),
+    SENDGRID_TEMPLATE_ID: await getSecret('SENDGRID_TEMPLATE_ID'),
 
     // URLs y Asignaciones (No sensibles)
-    CHATGPT_CHAT_URL: 'https://chatgpt.com/share/e/66e9631f-d6e8-8005-8d38-bc44d9287406',
-    RESOLUTION_LINK: 'https://console.cloud.google.com/functions/details/us-central1/stripeWebhookHandler?project=civil-forge-403609',
-    ASSIGNED_TO: 'Tu Nombre',
+    CHATGPT_CHAT_URL: process.env.CHATGPT_CHAT_URL || 'https://chatgpt.com/share/e/66e9631f-d6e8-8005-8d38-bc44d9287406',
+    RESOLUTION_LINK: process.env.RESOLUTION_LINK || 'https://console.cloud.google.com/functions/details/us-central1/stripeWebhookHandler?project=civil-forge-403609',
+    ASSIGNED_TO: process.env.ASSIGNED_TO || 'Tu Nombre',
 
     // Mapeo de Payment Links (No sensibles)
     PAYMENT_LINKS: {
