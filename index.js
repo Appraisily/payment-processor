@@ -9,67 +9,57 @@ const loadConfig = require('./config'); // Importa el config.js actualizado
 
 const app = express();
 
-// Función para inicializar la aplicación con la configuración cargada
-async function initializeApp() {
+// Middleware global para parsear cuerpos JSON para rutas que no sean webhooks
+app.use(express.json());
+
+// Ruta del webhook de Stripe
+app.post('/stripe-webhook', express.raw({ type: /^application\/json/ }), async (req, res) => {
+  console.log('Webhook recibido en /stripe-webhook');
+  console.log(`Headers: ${JSON.stringify(req.headers)}`);
+  console.log(`Tipo de Body: ${typeof req.body}`); // Debería mostrar 'object' si es Buffer
+  console.log(`Contenido del Body: ${req.body.toString('utf8')}`);
+
+  const sig = req.headers['stripe-signature'];
+  let event;
+
   try {
-    const config = await loadConfig();
+    // Inicializa Stripe con ambas claves (Test y Live)
+    const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
+    const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
 
-    // Verificar si el projectId está definido
-    if (!config) {
-      throw new Error('La configuración no se ha cargado correctamente.');
+    // Intenta construir el evento usando la clave de prueba
+    try {
+      event = stripeTest.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
+      event.mode = 'Test';
+      console.log('Evento verificado en modo Test');
+    } catch (testErr) {
+      console.warn('Fallo al verificar con el secreto de prueba, intentando modo Live:', testErr.message);
+      // Si falla, intenta con la clave Live
+      event = stripeLive.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
+      event.mode = 'Live';
+      console.log('Evento verificado en modo Live');
     }
-
-    // Configura SendGrid con la API Key una sola vez
-    sendGridMail.setApiKey(config.SENDGRID_API_KEY);
-
-    // Middleware para parsear cuerpos JSON para rutas que no sean webhooks
-    app.use(express.json());
-
-    // Stripe requiere el cuerpo raw para verificar firmas de webhooks
-    app.post('/stripe-webhook', express.raw({ type: /^application\/json/ }), async (req, res) => {
-      console.log('Inicio de la ejecución de la función');
-
-      const sig = req.headers['stripe-signature'];
-      let event;
-
-      try {
-        // Inicializa Stripe con ambas claves (Test y Live)
-        const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
-        const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
-
-        // Intenta construir el evento usando la clave de prueba
-        try {
-          event = stripeTest.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
-          event.mode = 'Test';
-          console.log('Evento verificado en modo Test');
-        } catch (testErr) {
-          console.warn('Fallo al verificar con el secreto de prueba, intentando modo Live:', testErr.message);
-          // Si falla, intenta con la clave Live
-          event = stripeLive.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
-          event.mode = 'Live';
-          console.log('Evento verificado en modo Live');
-        }
-      } catch (err) {
-        console.error('Fallo en la verificación de la firma del webhook:', err.message);
-        await logError(config, {
-          timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
-          severity: 'Error',
-          scriptName: 'stripeWebhookHandler',
-          errorCode: 'SignatureVerificationFailed',
-          errorMessage: err.message,
-          stackTrace: err.stack || '',
-          userId: '',
-          requestId: req.headers['x-request-id'] || '',
-          environment: 'Production',
-          endpoint: req.originalUrl || '',
-          additionalContext: JSON.stringify({ payload: req.body }),
-          resolutionStatus: 'Open',
-          assignedTo: config.ASSIGNED_TO,
-          chatGPT: config.CHATGPT_CHAT_URL,
-          resolutionLink: config.RESOLUTION_LINK,
-        });
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-      }
+  } catch (err) {
+    console.error('Fallo en la verificación de la firma del webhook:', err.message);
+    await logError(config, {
+      timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+      severity: 'Error',
+      scriptName: 'stripeWebhookHandler',
+      errorCode: 'SignatureVerificationFailed',
+      errorMessage: err.message,
+      stackTrace: err.stack || '',
+      userId: '',
+      requestId: req.headers['x-request-id'] || '',
+      environment: 'Production',
+      endpoint: req.originalUrl || '',
+      additionalContext: JSON.stringify({ payload: req.body }),
+      resolutionStatus: 'Open',
+      assignedTo: config.ASSIGNED_TO,
+      chatGPT: config.CHATGPT_CHAT_URL,
+      resolutionLink: config.RESOLUTION_LINK,
+    });
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
 
       // Maneja el evento
       if (event.type === 'checkout.session.completed') {
