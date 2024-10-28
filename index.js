@@ -39,9 +39,9 @@ async function initializeApp() {
         const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
         const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
 
-        // Construye el evento usando cualquiera de las claves
+        // Construye el evento usando la clave de prueba
         try {
-          event = stripeTest.webhooks.constructEvent(req.rawBody, sig, config.SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED);
+          event = stripeTest.webhooks.constructEvent(req.rawBody, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
           // Verifica el modo del evento
           const mode = event.livemode ? 'Live' : 'Test';
           event.mode = mode;
