@@ -17,38 +17,41 @@ async function initializeApp() {
     // Configura SendGrid con la API Key una sola vez
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
 
-    // Ruta del webhook de Stripe - Definir antes del middleware global
-    app.post('/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    // Middleware para capturar el cuerpo crudo
+    app.use('/stripe-webhook', express.json({
+      verify: (req, res, buf) => {
+        req.rawBody = buf.toString('utf8'); // Almacena el cuerpo crudo
+      }
+    }));
+
+    // Ruta del webhook de Stripe - Definir antes del middleware global para otras rutas
+    app.post('/stripe-webhook', async (req, res) => {
       console.log('Webhook recibido en /stripe-webhook');
       console.log(`Headers: ${JSON.stringify(req.headers)}`);
-      console.log(`Tipo de Body: ${typeof req.body}`); // Debería mostrar 'object' si es Buffer
-      console.log(`Contenido del Body: ${Buffer.isBuffer(req.body) ? req.body.toString('utf8') : req.body}`);
-
-      // Verificar si req.body es un Buffer
-      if (!Buffer.isBuffer(req.body)) {
-        console.error('El cuerpo del webhook no es un Buffer.');
-        return res.status(400).send('Invalid request body');
-      }
+      console.log(`Tipo de Body: ${typeof req.body}`); // Debería mostrar 'object'
+      console.log(`Contenido del Body: ${req.rawBody}`); // Mostrar el cuerpo crudo
 
       const sig = req.headers['stripe-signature'];
       let event;
-      let mode = 'Unknown'; // Inicializa mode
 
       try {
         // Inicializa Stripe con ambas claves (Test y Live)
         const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
         const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
 
-        // Intenta construir el evento usando la clave de prueba
+        // Construye el evento usando cualquiera de las claves
         try {
-          event = stripeTest.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
-          mode = event.livemode ? 'Live' : 'Test';
+          event = stripeTest.webhooks.constructEvent(req.rawBody, sig, config.SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED);
+          // Verifica el modo del evento
+          const mode = event.livemode ? 'Live' : 'Test';
+          event.mode = mode;
           console.log(`Evento verificado en modo ${mode}`);
         } catch (testErr) {
           console.warn('Fallo al verificar con el secreto de prueba, intentando modo Live:', testErr.message);
           // Si falla, intenta con la clave Live
-          event = stripeLive.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
-          mode = event.livemode ? 'Live' : 'Test';
+          event = stripeLive.webhooks.constructEvent(req.rawBody, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
+          const mode = event.livemode ? 'Live' : 'Test';
+          event.mode = mode;
           console.log(`Evento verificado en modo ${mode}`);
         }
       } catch (err) {
@@ -62,9 +65,9 @@ async function initializeApp() {
           stackTrace: err.stack || '',
           userId: '',
           requestId: req.headers['x-request-id'] || '',
-          environment: mode, // 'Test', 'Live' o 'Unknown'
+          environment: 'Production',
           endpoint: req.originalUrl || '',
-          additionalContext: JSON.stringify({ payload: req.body.toString('utf8') }),
+          additionalContext: JSON.stringify({ payload: req.rawBody }),
           resolutionStatus: 'Open',
           assignedTo: config.ASSIGNED_TO,
           chatGPT: config.CHATGPT_CHAT_URL,
@@ -91,8 +94,11 @@ async function initializeApp() {
 
         const sessionDate = new Date(created * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
 
+        let mode; // Declarar `mode` en el ámbito superior
+
         try {
           // Determina el modo basado en el evento
+          mode = event.mode; // 'Test' o 'Live'
           console.log(`Procesando evento en modo: ${mode}`);
 
           // Autentica con Google Sheets
@@ -236,7 +242,7 @@ async function initializeApp() {
             stackTrace: err.stack || '',
             userId: '',
             requestId: req.headers['x-request-id'] || '',
-            environment: mode, // Indica Test o Live
+            environment: mode || 'Unknown', // Usar `mode` si está definido
             endpoint: req.originalUrl || '',
             additionalContext: JSON.stringify({ 
               session_id, 
