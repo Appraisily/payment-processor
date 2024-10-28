@@ -38,17 +38,21 @@ async function initializeApp() {
         const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
         const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
 
-        // Intenta construir el evento usando la clave de prueba
+        // Construye el evento usando cualquiera de las claves
+        // Luego determina el modo usando el campo `livemode`
         try {
           event = stripeTest.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
-          event.mode = 'Test';
-          console.log('Evento verificado en modo Test');
+          // Verifica el modo del evento
+          const mode = event.livemode ? 'Live' : 'Test';
+          event.mode = mode;
+          console.log(`Evento verificado en modo ${mode}`);
         } catch (testErr) {
           console.warn('Fallo al verificar con el secreto de prueba, intentando modo Live:', testErr.message);
           // Si falla, intenta con la clave Live
           event = stripeLive.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
-          event.mode = 'Live';
-          console.log('Evento verificado en modo Live');
+          const mode = event.livemode ? 'Live' : 'Test';
+          event.mode = mode;
+          console.log(`Evento verificado en modo ${mode}`);
         }
       } catch (err) {
         console.error('Fallo en la verificación de la firma del webhook:', err.message);
