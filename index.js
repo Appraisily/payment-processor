@@ -13,8 +13,11 @@ const app = express();
 async function initializeApp() {
   try {
     const config = await loadConfig();
-  // Agrega este log para verificar el projectId
-    console.log(`GOOGLE_CLOUD_PROJECT_ID: ${process.env.GOOGLE_CLOUD_PROJECT_ID}`);
+
+    // Verificar si el projectId está definido
+    if (!config) {
+      throw new Error('La configuración no se ha cargado correctamente.');
+    }
 
     // Configura SendGrid con la API Key una sola vez
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
@@ -23,7 +26,7 @@ async function initializeApp() {
     app.use(express.json());
 
     // Stripe requiere el cuerpo raw para verificar firmas de webhooks
-    app.post('/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    app.post('/stripe-webhook', express.raw({ type: /^application\/json/ }), async (req, res) => {
       console.log('Inicio de la ejecución de la función');
 
       const sig = req.headers['stripe-signature'];
