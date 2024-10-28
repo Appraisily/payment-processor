@@ -60,7 +60,7 @@ async function loadConfig() {
     // Configuración de SendGrid
     SENDGRID_API_KEY: await getSecret('SENDGRID_API_KEY'),
     EMAIL_SENDER: await getSecret('SENDGRID_EMAIL'),
-    SENDGRID_TEMPLATE_ID: await getSecret('SENDGRID_TEMPLATE_ID'),
+    SENDGRID_TEMPLATE_ID: await getSecret('SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED'),
 
     // URLs y Asignaciones (No sensibles)
     CHATGPT_CHAT_URL: process.env.CHATGPT_CHAT_URL || 'https://chatgpt.com/share/e/66e9631f-d6e8-8005-8d38-bc44d9287406',
