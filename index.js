@@ -18,7 +18,7 @@ async function initializeApp() {
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
 
     // Ruta del webhook de Stripe - Definir antes del middleware global
-    app.post('/stripe-webhook', express.raw({ type: /^application\/json/ }), async (req, res) => {
+    app.post('/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
       console.log('Webhook recibido en /stripe-webhook');
       console.log(`Headers: ${JSON.stringify(req.headers)}`);
       console.log(`Tipo de Body: ${typeof req.body}`); // Debería mostrar 'object' si es Buffer
