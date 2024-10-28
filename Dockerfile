@@ -1,21 +1,21 @@
-# Use the official Node.js image.
+# Dockerfile
+
 FROM node:18
 
-# Create and change to the app directory.
+# Crear directorio de la app
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json first to leverage Docker caching.
+# Copiar package.json y package-lock.json
 COPY package*.json ./
 
-# Install dependencies.
-RUN npm install --production
+# Instalar dependencias
+RUN npm install
 
-# Copy the rest of the application code.
+# Copiar el resto de la aplicación
 COPY . .
 
-# Expose the port the app runs on.
-ENV PORT=8080
+# Exponer el puerto
 EXPOSE 8080
 
-# Run the web service on container startup.
-CMD [ "node", "index.js" ]
+# Iniciar la aplicación
+CMD ["npm", "start"]
