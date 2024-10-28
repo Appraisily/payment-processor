@@ -7,30 +7,28 @@ const sendGridMail = require('@sendgrid/mail');
 const { logError } = require('./errorLogger');
 const loadConfig = require('./config'); // Importa el config.js actualizado
 
-const app = express();
-
-// Middleware global para parsear cuerpos JSON para rutas que no sean webhooks
-app.use(express.json());
-
-// Función para inicializar la aplicación con la configuración cargada
 async function initializeApp() {
-  try {
-    const config = await loadConfig();
+  const app = express();
 
-    // Verificar si el projectId está definido
-    if (!config) {
-      throw new Error('La configuración no se ha cargado correctamente.');
-    }
+  try {
+    // Cargar la configuración
+    const config = await loadConfig();
 
     // Configura SendGrid con la API Key una sola vez
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
 
-    // Ruta del webhook de Stripe
+    // Ruta del webhook de Stripe - Definir antes del middleware global
     app.post('/stripe-webhook', express.raw({ type: /^application\/json/ }), async (req, res) => {
       console.log('Webhook recibido en /stripe-webhook');
       console.log(`Headers: ${JSON.stringify(req.headers)}`);
       console.log(`Tipo de Body: ${typeof req.body}`); // Debería mostrar 'object' si es Buffer
-      console.log(`Contenido del Body: ${req.body.toString('utf8')}`);
+      console.log(`Contenido del Body: ${Buffer.isBuffer(req.body) ? req.body.toString('utf8') : req.body}`);
+
+      // Verificar si req.body es un Buffer
+      if (!Buffer.isBuffer(req.body)) {
+        console.error('El cuerpo del webhook no es un Buffer.');
+        return res.status(400).send('Invalid request body');
+      }
 
       const sig = req.headers['stripe-signature'];
       let event;
@@ -65,7 +63,7 @@ async function initializeApp() {
           requestId: req.headers['x-request-id'] || '',
           environment: 'Production',
           endpoint: req.originalUrl || '',
-          additionalContext: JSON.stringify({ payload: req.body }),
+          additionalContext: JSON.stringify({ payload: req.body.toString('utf8') }),
           resolutionStatus: 'Open',
           assignedTo: config.ASSIGNED_TO,
           chatGPT: config.CHATGPT_CHAT_URL,
@@ -257,6 +255,9 @@ async function initializeApp() {
         res.status(200).send('OK');
       }
     }); // Fin del app.post('/stripe-webhook')
+
+    // Middleware global para parsear cuerpos JSON para rutas que no sean webhooks
+    app.use(express.json());
 
     // Opcional: Endpoint de Health Check
     app.get('/', (req, res) => {
