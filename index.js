@@ -244,18 +244,19 @@ async function initializeApp() {
           });
           res.status(500).send('Internal Server Error');
         }
-      });
+      }
+    }); // Fin del app.post('/stripe-webhook')
 
-      // Opcional: Endpoint de Health Check
-      app.get('/', (req, res) => {
-        res.send('El servicio de Cloud Run está activo y funcionando.');
-      });
+    // Opcional: Endpoint de Health Check
+    app.get('/', (req, res) => {
+      res.send('El servicio de Cloud Run está activo y funcionando.');
+    });
 
-      // Inicia el servidor
-      const PORT = process.env.PORT || 8080;
-      app.listen(PORT, () => {
-        console.log(`Servidor escuchando en el puerto ${PORT}`);
-      });
+    // Inicia el servidor
+    const PORT = process.env.PORT || 8080;
+    app.listen(PORT, () => {
+      console.log(`Servidor escuchando en el puerto ${PORT}`);
+    });
   } catch (error) {
     console.error('Fallo al inicializar la aplicación:', error);
     process.exit(1);
