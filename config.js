@@ -1,6 +1,7 @@
 // config.js
 
-require('dotenv').config(); // Asegúrate de tener instalado 'dotenv' y un archivo .env
+// Eliminamos la carga de dotenv ya que no es necesaria en producción
+// require('dotenv').config();
 
 const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 
