@@ -5,57 +5,57 @@ const { google } = require('googleapis');
 const stripeModule = require('stripe');
 const sendGridMail = require('@sendgrid/mail');
 const { logError } = require('./errorLogger');
-const loadConfig = require('./config'); // Importa el config.js actualizado
+const loadConfig = require('./config'); // Import the updated config.js
 
 async function initializeApp() {
   const app = express();
 
   try {
-    // Cargar la configuración
+    // Load configuration
     const config = await loadConfig();
 
-    // Configura SendGrid con la API Key una sola vez
+    // Configure SendGrid once
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
 
-    // Middleware para capturar el cuerpo crudo
+    // Middleware to capture raw body for Stripe webhook verification
     app.use('/stripe-webhook', express.json({
       verify: (req, res, buf) => {
-        req.rawBody = buf.toString('utf8'); // Almacena el cuerpo crudo
+        req.rawBody = buf.toString('utf8'); // Store raw body
       }
     }));
 
-    // Ruta del webhook de Stripe - Definir antes del middleware global para otras rutas
+    // Stripe webhook route
     app.post('/stripe-webhook', async (req, res) => {
-      console.log('Webhook recibido en /stripe-webhook');
+      console.log('Webhook received at /stripe-webhook');
       console.log(`Headers: ${JSON.stringify(req.headers)}`);
-      console.log(`Tipo de Body: ${typeof req.body}`); // Debería mostrar 'object'
-      console.log(`Contenido del Body: ${req.rawBody}`); // Mostrar el cuerpo crudo
+      console.log(`Body Type: ${typeof req.body}`); // Should show 'object'
+      console.log(`Body Content: ${req.rawBody}`); // Show raw body
 
       const sig = req.headers['stripe-signature'];
       let event;
 
       try {
-        // Inicializa Stripe con ambas claves (Test y Live)
+        // Initialize Stripe with both Test and Live keys
         const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
         const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
 
-        // Construye el evento usando la clave de prueba
+        // Attempt to construct event using Test webhook secret
         try {
           event = stripeTest.webhooks.constructEvent(req.rawBody, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
-          // Verifica el modo del evento
+          // Determine mode based on event
           const mode = event.livemode ? 'Live' : 'Test';
           event.mode = mode;
-          console.log(`Evento verificado en modo ${mode}`);
+          console.log(`Event verified in ${mode} mode`);
         } catch (testErr) {
-          console.warn('Fallo al verificar con el secreto de prueba, intentando modo Live:', testErr.message);
-          // Si falla, intenta con la clave Live
+          console.warn('Failed to verify with Test secret, attempting Live secret:', testErr.message);
+          // If Test verification fails, attempt Live verification
           event = stripeLive.webhooks.constructEvent(req.rawBody, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
           const mode = event.livemode ? 'Live' : 'Test';
           event.mode = mode;
-          console.log(`Evento verificado en modo ${mode}`);
+          console.log(`Event verified in ${mode} mode`);
         }
       } catch (err) {
-        console.error('Fallo en la verificación de la firma del webhook:', err.message);
+        console.error('Failed to verify webhook signature:', err.message);
         await logError(config, {
           timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
           severity: 'Error',
@@ -76,7 +76,7 @@ async function initializeApp() {
         return res.status(400).send(`Webhook Error: ${err.message}`);
       }
 
-      // Maneja el evento
+      // Handle the event
       if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
 
@@ -88,20 +88,20 @@ async function initializeApp() {
           currency,
           customer_details: { email: customerEmail = '', name: customerName = '' },
           created,
-          payment_link, // Extrae el payment_link de la sesión
-          metadata, // Si se usa metadata
+          payment_link, // Extract payment_link from session
+          metadata, // If metadata is used
         } = session;
 
         const sessionDate = new Date(created * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
 
-        let mode; // Declarar `mode` en el ámbito superior
+        let mode; // Declare `mode` in the upper scope
 
         try {
-          // Determina el modo basado en el evento
-          mode = event.mode; // 'Test' o 'Live'
-          console.log(`Procesando evento en modo: ${mode}`);
+          // Determine mode based on event
+          mode = event.mode; // 'Test' or 'Live'
+          console.log(`Processing event in ${mode} mode`);
 
-          // Autentica con Google Sheets
+          // Authenticate with Google Sheets
           const auth = new google.auth.GoogleAuth({
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
           });
@@ -110,7 +110,7 @@ async function initializeApp() {
 
           const sheets = google.sheets({ version: 'v4', auth });
 
-          // Verifica duplicados en la hoja de Ventas
+          // Check for duplicates in Sales sheet
           const salesGetResponse = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SALES_SPREADSHEET_ID,
             range: `${config.SALES_SHEET_NAME}!A:A`,
@@ -119,13 +119,13 @@ async function initializeApp() {
           const existingSalesSessionIds = salesGetResponse.data.values ? salesGetResponse.data.values.flat() : [];
 
           if (existingSalesSessionIds.includes(session_id)) {
-            console.log(`ID de sesión duplicada detectada en la hoja de Ventas: ${session_id}`);
+            console.log(`Duplicate session ID detected in Sales sheet: ${session_id}`);
             await logError(config, {
               timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
               severity: 'Warning',
               scriptName: 'stripeWebhookHandler',
               errorCode: 'DuplicateSession',
-              errorMessage: `ID de sesión duplicada detectada en la hoja de Ventas: ${session_id}`,
+              errorMessage: `Duplicate session ID detected in Sales sheet: ${session_id}`,
               stackTrace: '',
               userId: '',
               requestId: req.headers['x-request-id'] || '',
@@ -140,17 +140,17 @@ async function initializeApp() {
             return res.status(200).send('OK');
           }
 
-          // Determina el producto comprado basado en el payment_link
+          // Determine the appraisal type based on payment_link
           let productDetails = config.PAYMENT_LINKS[payment_link || ''];
 
           if (!productDetails) {
-            console.warn(`No se encontró mapeo de producto para payment_link: ${payment_link}`);
+            console.warn(`No product mapping found for payment_link: ${payment_link}`);
             await logError(config, {
               timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
               severity: 'Warning',
               scriptName: 'stripeWebhookHandler',
               errorCode: 'UnmappedPaymentLink',
-              errorMessage: `No se encontró mapeo de producto para payment_link: ${payment_link}`,
+              errorMessage: `No product mapping found for payment_link: ${payment_link}`,
               stackTrace: '',
               userId: '',
               requestId: req.headers['x-request-id'] || '',
@@ -162,76 +162,76 @@ async function initializeApp() {
               chatGPT: config.CHATGPT_CHAT_URL,
               resolutionLink: config.RESOLUTION_LINK,
             });
-            // Procede con un nombre de producto por defecto
+            // Proceed with a default product name
             productDetails = { productName: 'Unknown Product' };
           }
 
           const productName = productDetails.productName;
 
-          // Añade a la hoja de Ventas
+          // Append to Sales sheet
           await sheets.spreadsheets.values.append({
             spreadsheetId: config.SALES_SPREADSHEET_ID,
-            range: `${config.SALES_SHEET_NAME}!A:H`, // Columnas A a H
+            range: `${config.SALES_SHEET_NAME}!A:H`, // Columns A to H
             valueInputOption: 'USER_ENTERED',
             insertDataOption: 'INSERT_ROWS',
             resource: {
               values: [[
-                session_id,                         // Columna A: Session ID
-                paymentIntentId,                    // Columna B: Payment Intent ID
-                customer,                           // Columna C: Customer ID
-                customerName,                       // Columna D: Customer Name
-                customerEmail,                      // Columna E: Customer Email
-                parseFloat((amountTotal / 100).toFixed(2)),  // Columna F: Amount Paid
-                sessionDate,                        // Columna G: Session Date
-                mode,                               // Columna H: Mode (Test or Live)
+                session_id,                                     // Column A: Session ID
+                paymentIntentId,                               // Column B: Payment Intent ID
+                customer,                                      // Column C: Customer ID
+                customerName,                                  // Column D: Customer Name
+                customerEmail,                                 // Column E: Customer Email
+                parseFloat((amountTotal / 100).toFixed(2)),    // Column F: Amount Paid
+                sessionDate,                                   // Column G: Session Date
+                mode,                                          // Column H: Mode (Test or Live)
               ]],
             },
           });
 
-          console.log('Nueva sesión añadida a la hoja de Ventas');
+          console.log('New session added to Sales sheet');
 
-          // Añade a la hoja de Pending Appraisals
+          // Append to Pending Appraisals sheet
           await sheets.spreadsheets.values.append({
             spreadsheetId: config.PENDING_APPRAISALS_SPREADSHEET_ID,
-            range: `${config.PENDING_APPRAISALS_SHEET_NAME}!A:F`, // Columnas A a F
+            range: `${config.PENDING_APPRAISALS_SHEET_NAME}!A:F`, // Columns A to F
             valueInputOption: 'USER_ENTERED',
             insertDataOption: 'INSERT_ROWS',
             resource: {
               values: [[
-                new Date(created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }), // Columna A: Date
-                productName, // Columna B: Product Purchased
-                session_id,   // Columna C: Session ID
-                customerEmail, // Columna D: Customer Email
-                customerName,  // Columna E: Customer Name
-                'PENDING INFO', // Columna F: Status
+                new Date(created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }), // Column A: Date
+                productName,      // Column B: Appraisal Type
+                session_id,       // Column C: Session ID
+                customerEmail,    // Column D: Customer Email
+                customerName,     // Column E: Customer Name
+                'PENDING INFO',    // Column F: Status
               ]],
             },
           });
 
-          console.log('Nueva sesión añadida a la hoja de Pending Appraisals');
+          console.log('New session added to Pending Appraisals sheet');
 
-          // **Enviar Email al Cliente Usando el Template Dinámico de SendGrid **
+          // **Send Confirmation Email to Customer Using SendGrid Dynamic Template **
           const currentYear = new Date().getFullYear();
 
-          console.log(`Monto Pagado: ${parseFloat((amountTotal / 100).toFixed(2))} (Tipo: ${typeof parseFloat((amountTotal / 100).toFixed(2))})`);
+          console.log(`Amount Paid: ${parseFloat((amountTotal / 100).toFixed(2))} (Type: ${typeof parseFloat((amountTotal / 100).toFixed(2))})`);
 
           const emailContent = {
             to: customerEmail,
-            from: config.EMAIL_SENDER, // Email verificado
-            templateId: config.SENDGRID_TEMPLATE_ID, // Template ID único
+            from: config.EMAIL_SENDER, // Verified email
+            templateId: config.SENDGRID_TEMPLATE_ID, // Unique Template ID
             dynamic_template_data: {
               customer_name: customerName,
               session_id: session_id,
-              current_year: currentYear, // Variable dinámica
+              current_year: currentYear, // Dynamic variable
             },
           };
 
           await sendGridMail.send(emailContent);
-          console.log(`Email de confirmación enviado a ${customerEmail}`);
+          console.log(`Confirmation email sent to ${customerEmail}`);
 
           res.status(200).send('OK');
         } catch (err) {
-          console.error('Error procesando el webhook:', err);
+          console.error('Error processing webhook:', err);
           // Log detailed SendGrid error
           await logError(config, {
             timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
@@ -242,7 +242,7 @@ async function initializeApp() {
             stackTrace: err.stack || '',
             userId: '',
             requestId: req.headers['x-request-id'] || '',
-            environment: mode || 'Unknown', // Usar `mode` si está definido
+            environment: mode || 'Unknown', // Use `mode` if defined
             endpoint: req.originalUrl || '',
             additionalContext: JSON.stringify({ 
               session_id, 
@@ -257,29 +257,29 @@ async function initializeApp() {
           res.status(500).send('Internal Server Error');
         }
       } else {
-        // Manejar otros tipos de eventos si es necesario
+        // Handle other event types if necessary
         res.status(200).send('OK');
       }
-    }); // Fin del app.post('/stripe-webhook')
+    }); // End of app.post('/stripe-webhook')
 
-    // Middleware global para parsear cuerpos JSON para rutas que no sean webhooks
+    // Global middleware to parse JSON bodies for routes other than webhooks
     app.use(express.json());
 
-    // Opcional: Endpoint de Health Check
+    // Optional: Health Check Endpoint
     app.get('/', (req, res) => {
-      res.send('El servicio de Cloud Run está activo y funcionando.');
+      res.send('Cloud Run service is active and running.');
     });
 
-    // Inicia el servidor
+    // Start the server
     const PORT = process.env.PORT || 8080;
     app.listen(PORT, () => {
-      console.log(`Servidor escuchando en el puerto ${PORT}`);
+      console.log(`Server listening on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Fallo al inicializar la aplicación:', error);
+    console.error('Failed to initialize the application:', error);
     process.exit(1);
   }
 }
 
-// Inicia la inicialización
+// Start initialization
 initializeApp();
