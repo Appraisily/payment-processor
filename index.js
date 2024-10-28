@@ -32,26 +32,23 @@ async function initializeApp() {
 
       const sig = req.headers['stripe-signature'];
       let event;
+      let mode = 'Unknown'; // Inicializa mode
 
       try {
         // Inicializa Stripe con ambas claves (Test y Live)
         const stripeTest = stripeModule(config.STRIPE_SECRET_KEY_TEST);
         const stripeLive = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
 
-        // Construye el evento usando cualquiera de las claves
-        // Luego determina el modo usando el campo `livemode`
+        // Intenta construir el evento usando la clave de prueba
         try {
           event = stripeTest.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_TEST);
-          // Verifica el modo del evento
-          const mode = event.livemode ? 'Live' : 'Test';
-          event.mode = mode;
+          mode = event.livemode ? 'Live' : 'Test';
           console.log(`Evento verificado en modo ${mode}`);
         } catch (testErr) {
           console.warn('Fallo al verificar con el secreto de prueba, intentando modo Live:', testErr.message);
           // Si falla, intenta con la clave Live
           event = stripeLive.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET_LIVE);
-          const mode = event.livemode ? 'Live' : 'Test';
-          event.mode = mode;
+          mode = event.livemode ? 'Live' : 'Test';
           console.log(`Evento verificado en modo ${mode}`);
         }
       } catch (err) {
@@ -65,7 +62,7 @@ async function initializeApp() {
           stackTrace: err.stack || '',
           userId: '',
           requestId: req.headers['x-request-id'] || '',
-          environment: 'Production',
+          environment: mode, // 'Test', 'Live' o 'Unknown'
           endpoint: req.originalUrl || '',
           additionalContext: JSON.stringify({ payload: req.body.toString('utf8') }),
           resolutionStatus: 'Open',
@@ -96,7 +93,6 @@ async function initializeApp() {
 
         try {
           // Determina el modo basado en el evento
-          const mode = event.mode; // 'Test' o 'Live'
           console.log(`Procesando evento en modo: ${mode}`);
 
           // Autentica con Google Sheets
