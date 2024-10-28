@@ -13,6 +13,8 @@ const app = express();
 async function initializeApp() {
   try {
     const config = await loadConfig();
+  // Agrega este log para verificar el projectId
+    console.log(`GOOGLE_CLOUD_PROJECT_ID: ${process.env.GOOGLE_CLOUD_PROJECT_ID}`);
 
     // Configura SendGrid con la API Key una sola vez
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
