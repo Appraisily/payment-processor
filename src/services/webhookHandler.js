@@ -54,3 +54,7 @@ async function handleStripeWebhook(req, res, config, mode) {
     res.status(400).send(`Webhook Error: ${err.message}`);
   }
 }
+
+module.exports = {
+  handleStripeWebhook
+};
