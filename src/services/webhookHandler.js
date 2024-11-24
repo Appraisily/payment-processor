@@ -5,7 +5,6 @@ const { logError } = require('../utils/errorLogger');
 async function handleStripeWebhook(req, res, config, mode) {
   console.log(`Webhook received at /stripe-webhook${mode === 'test' ? '-test' : ''}`);
   console.log(`Headers: ${JSON.stringify(req.headers)}`);
-  console.log(`Body Type: ${typeof req.body}`);
 
   const sig = req.headers['stripe-signature'];
   let event;
@@ -20,9 +19,14 @@ async function handleStripeWebhook(req, res, config, mode) {
       config.STRIPE_WEBHOOK_SECRET_TEST : 
       config.STRIPE_WEBHOOK_SECRET_LIVE;
 
-    // Use raw body directly from request
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    console.log(`Event verified in ${mode} mode`);
+    // Usar req.rawBody que fue guardado por el middleware
+    event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      sig,
+      webhookSecret
+    );
+    
+    console.log(`Event verified in ${mode} mode:`, event.type);
 
     if (event.type === 'checkout.session.completed') {
       await processCheckoutSession(event.data.object, config, mode);
@@ -43,7 +47,9 @@ async function handleStripeWebhook(req, res, config, mode) {
       environment: mode,
       endpoint: req.originalUrl || '',
       additionalContext: JSON.stringify({ 
-        error: err.message 
+        error: err.message,
+        signature: sig,
+        mode: mode
       }),
       resolutionStatus: 'Open',
       assignedTo: config.ASSIGNED_TO,
