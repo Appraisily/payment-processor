@@ -9,7 +9,7 @@ async function initializeApp() {
     // Load configuration
     const config = await loadConfig();
 
-    // Setup webhook routes
+    // Setup webhook routes (must be before express.json() middleware)
     setupWebhookRoutes(app, config);
 
     // Global middleware to parse JSON bodies for routes other than webhooks

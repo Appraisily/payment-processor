@@ -3,11 +3,7 @@ const { handleStripeWebhook } = require('../services/webhookHandler');
 
 function setupWebhookRoutes(app, config) {
   // Middleware to capture raw body for Stripe webhook verification
-  const rawBodyMiddleware = express.json({
-    verify: (req, res, buf) => {
-      req.rawBody = buf.toString('utf8');
-    }
-  });
+  const rawBodyMiddleware = express.raw({ type: 'application/json' });
 
   // Live webhook endpoint
   app.post('/stripe-webhook', rawBodyMiddleware, async (req, res) => {
