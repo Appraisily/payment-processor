@@ -6,8 +6,14 @@ async function initializeApp() {
   const app = express();
 
   try {
-    // Load configuration
+    // Load configuration first
+    console.log('Loading configuration...');
     const config = await loadConfig();
+    console.log('Configuration loaded successfully');
+
+    if (!config.STRIPE_WEBHOOK_SECRET_LIVE || !config.STRIPE_WEBHOOK_SECRET_TEST) {
+      throw new Error('Webhook secrets not properly loaded');
+    }
 
     // Setup webhook routes (must be before express.json() middleware)
     setupWebhookRoutes(app, config);
