@@ -4,11 +4,14 @@ const { logError } = require('../utils/errorLogger');
 
 async function handleStripeWebhook(req, res, config, mode) {
   console.log(`Webhook received at /stripe-webhook${mode === 'test' ? '-test' : ''}`);
-  console.log(`Headers: ${JSON.stringify(req.headers)}`);
-
+  
   const sig = req.headers['stripe-signature'];
-  let event;
+  if (!sig) {
+    console.error('No stripe-signature header found');
+    return res.status(400).send('No signature header');
+  }
 
+  let event;
   try {
     const stripe = stripeModule(mode === 'test' ? 
       config.STRIPE_SECRET_KEY_TEST : 
@@ -19,19 +22,15 @@ async function handleStripeWebhook(req, res, config, mode) {
       config.STRIPE_WEBHOOK_SECRET_TEST : 
       config.STRIPE_WEBHOOK_SECRET_LIVE;
 
-    console.log(`Using webhook secret for ${mode} mode`); // Debug log
+    console.log(`Using ${mode} mode webhook secret`);
 
     if (!webhookSecret) {
       throw new Error(`Webhook secret not found for ${mode} mode`);
     }
 
-    // Log the raw body type and first few characters
-    console.log('Raw body type:', typeof req.body);
-    console.log('Raw body preview:', req.body.toString().substring(0, 100));
-
-    // Usar req.body directamente ya que express.raw() lo mantiene como Buffer
+    // Use the raw body buffer for signature verification
     event = stripe.webhooks.constructEvent(
-      req.body,
+      req.rawBody, // Use the raw buffer
       sig,
       webhookSecret
     );
@@ -40,9 +39,11 @@ async function handleStripeWebhook(req, res, config, mode) {
 
     if (event.type === 'checkout.session.completed') {
       await processCheckoutSession(event.data.object, config, mode);
+      res.status(200).send('Webhook processed successfully');
+    } else {
+      console.log(`Ignoring event type ${event.type}`);
+      res.status(200).send('Ignored event type');
     }
-
-    res.status(200).send('OK');
   } catch (err) {
     console.error('Error processing webhook:', err);
     await logError(config, {
