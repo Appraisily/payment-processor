@@ -44,8 +44,9 @@ async function loadConfig() {
     SENDGRID_TEMPLATE_ID: await getSecret('SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED'),
     
     // WordPress Configuration
-    WORDPRESS_API_URL: await getSecret('WORDPRESS_API_URL'),
-    WORDPRESS_API_TOKEN: await getSecret('WORDPRESS_API_TOKEN'),
+    WORDPRESS_API_URL: await getSecret('WORDPRESS_API_URL'), // Base URL for WordPress API
+    WORDPRESS_USERNAME: await getSecret('wp_username'),
+    WORDPRESS_APP_PASSWORD: await getSecret('wp_app_password'),
     WORDPRESS_ADMIN_URL: await getSecret('WORDPRESS_ADMIN_URL'),
     
     // Admin Configuration

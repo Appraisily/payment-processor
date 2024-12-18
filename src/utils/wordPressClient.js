@@ -1,6 +1,11 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
+function getAuthHeader(config) {
+  const credentials = Buffer.from(`${config.WORDPRESS_USERNAME}:${config.WORDPRESS_APP_PASSWORD}`).toString('base64');
+  return `Basic ${credentials}`;
+}
+
 async function createInitialPost(postData, config) {
   try {
     const response = await axios.post(
@@ -14,7 +19,7 @@ async function createInitialPost(postData, config) {
       },
       {
         headers: {
-          Authorization: `Bearer ${config.WORDPRESS_API_TOKEN}`,
+          Authorization: getAuthHeader(config),
           'Content-Type': 'application/json'
         }
       }
@@ -44,7 +49,7 @@ async function uploadMedia(buffer, filename, config) {
       {
         headers: {
           ...form.getHeaders(),
-          Authorization: `Bearer ${config.WORDPRESS_API_TOKEN}`
+          Authorization: getAuthHeader(config)
         }
       }
     );
@@ -72,7 +77,7 @@ async function updatePostWithMedia(postId, updateData, config) {
       },
       {
         headers: {
-          Authorization: `Bearer ${config.WORDPRESS_API_TOKEN}`,
+          Authorization: getAuthHeader(config),
           'Content-Type': 'application/json'
         }
       }
