@@ -44,10 +44,9 @@ async function loadConfig() {
     SENDGRID_TEMPLATE_ID: await getSecret('SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED'),
     
     // WordPress Configuration
-    WORDPRESS_API_URL: await getSecret('WORDPRESS_API_URL'), // Base URL for WordPress API
+    WORDPRESS_API_URL: await getSecret('WORDPRESS_API_URL'),
     WORDPRESS_USERNAME: await getSecret('wp_username'),
     WORDPRESS_APP_PASSWORD: await getSecret('wp_app_password'),
-    WORDPRESS_ADMIN_URL: await getSecret('WORDPRESS_ADMIN_URL'),
     
     // Admin Configuration
     ADMIN_EMAIL: await getSecret('ADMIN_EMAIL'),
@@ -65,6 +64,12 @@ async function loadConfig() {
       'plink_1OnRzAAQSJ9n5XyNyLmReeCk': { productName: 'TaxArt' },
     },
   };
+
+  // Construct WordPress admin URL from API URL
+  // Example: If API URL is "https://resources.appraisily.com/wp-json/wp/v2"
+  // Extract base URL "https://resources.appraisily.com"
+  const baseUrl = cachedConfig.WORDPRESS_API_URL.split('/wp-json')[0];
+  cachedConfig.WORDPRESS_ADMIN_URL = `${baseUrl}/wp-admin`;
 
   return cachedConfig;
 }
