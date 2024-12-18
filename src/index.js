@@ -1,5 +1,6 @@
 const express = require('express');
 const { setupWebhookRoutes } = require('./routes/webhookRoutes');
+const { setupStripeRoutes } = require('./routes/stripeRoutes');
 const loadConfig = require('./config');
 
 async function initializeApp() {
@@ -18,8 +19,10 @@ async function initializeApp() {
     // Setup webhook routes (must be before express.json() middleware)
     setupWebhookRoutes(app, config);
 
+    // Setup Stripe routes
+    setupStripeRoutes(app, config);
+
     // Global middleware to parse JSON bodies for routes other than webhooks
-    app.use(express.json());
 
     // Health Check Endpoint
     app.get('/', (req, res) => {

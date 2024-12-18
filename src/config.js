@@ -27,6 +27,7 @@ async function loadConfig() {
     STRIPE_SECRET_KEY_LIVE: await getSecret('STRIPE_SECRET_KEY_LIVE'),
     STRIPE_WEBHOOK_SECRET_TEST: await getSecret('STRIPE_WEBHOOK_SECRET_TEST'),
     STRIPE_WEBHOOK_SECRET_LIVE: await getSecret('STRIPE_WEBHOOK_SECRET_LIVE'),
+    STRIPE_SHARED_SECRET: await getSecret('STRIPE_SHARED_SECRET'),
 
     // Google Sheets IDs
     SALES_SPREADSHEET_ID: await getSecret('SALES_SPREADSHEET_ID'),
