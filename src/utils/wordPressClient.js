@@ -9,7 +9,7 @@ function getAuthHeader(config) {
 async function createInitialPost(postData, config) {
   try {
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/wp/v2/appraisals`,
+      `${config.WORDPRESS_API_URL}/appraisals`,
       {
         ...postData,
         meta: {
@@ -67,7 +67,7 @@ async function uploadMedia(buffer, filename, config) {
 async function updatePostWithMedia(postId, updateData, config) {
   try {
     await axios.post(
-      `${config.WORDPRESS_API_URL}/wp/v2/appraisals/${postId}?acf_format=standard`,
+      `${config.WORDPRESS_API_URL}/appraisals/${postId}?acf_format=standard`,
       {
         ...updateData,
         meta: {
