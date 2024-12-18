@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const { setupWebhookRoutes } = require('./routes/webhookRoutes');
 const { setupStripeRoutes } = require('./routes/stripeRoutes');
 const loadConfig = require('./config');
@@ -15,6 +16,37 @@ async function initializeApp() {
     if (!config.STRIPE_WEBHOOK_SECRET_LIVE || !config.STRIPE_WEBHOOK_SECRET_TEST) {
       throw new Error('Webhook secrets not properly loaded');
     }
+    
+    // Configure CORS for WebContainer origins
+    const corsOptions = {
+      origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // Allow appraisily.com and subdomains
+        if (origin.endsWith('appraisily.com')) {
+          return callback(null, true);
+        }
+        
+        // Allow WebContainer origins
+        if (origin.includes('webcontainer-api.io')) {
+          return callback(null, true);
+        }
+        
+        // Allow local development
+        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+          return callback(null, true);
+        }
+        
+        callback(new Error('Not allowed by CORS'));
+      },
+      methods: ['GET', 'POST'],
+      allowedHeaders: ['Content-Type', 'x-shared-secret'],
+      credentials: true
+    };
+    
+    // Apply CORS middleware
+    app.use(cors(corsOptions));
 
     // Setup webhook routes (must be before express.json() middleware)
     setupWebhookRoutes(app, config);
