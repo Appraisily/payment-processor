@@ -42,6 +42,14 @@ async function loadConfig() {
     SENDGRID_API_KEY: await getSecret('SENDGRID_API_KEY'),
     EMAIL_SENDER: await getSecret('SENDGRID_EMAIL'),
     SENDGRID_TEMPLATE_ID: await getSecret('SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED'),
+    
+    // WordPress Configuration
+    WORDPRESS_API_URL: await getSecret('WORDPRESS_API_URL'),
+    WORDPRESS_API_TOKEN: await getSecret('WORDPRESS_API_TOKEN'),
+    WORDPRESS_ADMIN_URL: await getSecret('WORDPRESS_ADMIN_URL'),
+    
+    // Admin Configuration
+    ADMIN_EMAIL: await getSecret('ADMIN_EMAIL'),
 
     // URLs and Assignments
     CHATGPT_CHAT_URL: process.env.CHATGPT_CHAT_URL || 'https://chatgpt.com/share/e/66e9631f-d6e8-8005-8d38-bc44d9287406',
