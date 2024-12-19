@@ -8,6 +8,8 @@ function getAuthHeader(config) {
 
 async function createInitialPost(postData, config) {
   try {
+    console.log('Creating WordPress post with data:', JSON.stringify(postData, null, 2));
+
     const response = await axios.post(
       `${config.WORDPRESS_API_URL}/appraisals`,
       {
@@ -25,12 +27,23 @@ async function createInitialPost(postData, config) {
       }
     );
 
+    console.log('WordPress post creation response:', JSON.stringify(response.data, null, 2));
+
     return {
       id: response.data.id,
       editUrl: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${response.data.id}&action=edit`
     };
   } catch (error) {
-    console.error('Error creating WordPress post:', error);
+    console.error('Error creating WordPress post:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    });
     throw new Error('Failed to create WordPress post');
   }
 }
