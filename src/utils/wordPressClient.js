@@ -139,12 +139,14 @@ async function updatePostWithMedia(postId, updateData, config) {
     console.log('Post updated successfully');
   } catch (error) {
     console.error('Error updating post:', {
+      url: error.config?.url,
       message: error.message,
       response: error.response?.data,
       status: error.response?.status
     });
     throw new Error('Failed to update post');
   }
+}
 
 module.exports = {
   createInitialPost,
