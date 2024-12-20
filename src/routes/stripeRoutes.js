@@ -6,7 +6,7 @@ function setupStripeRoutes(app, config) {
   const router = express.Router();
 
   // Middleware to verify shared secret
-  const verifySharedSecret = (req, res, next) => {
+  const verifySharedSecret = async (req, res, next) => {
     const sharedSecret = req.headers['x-shared-secret'];
     
     try {
