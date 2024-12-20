@@ -9,19 +9,9 @@ function validateAppraisalRequest(req) {
     return 'Invalid session_id format';
   }
 
-  if (!req.body.customer_email) {
-    return 'Missing required field: customer_email';
-  }
-
-  // Validate email format
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if (!emailRegex.test(req.body.customer_email)) {
+  // Validate email format if provided
+  if (req.body.customer_email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(req.body.customer_email)) {
     return 'Invalid email format';
-  }
-
-  // Check for required main image
-  if (!req.files?.main || !req.files.main[0]) {
-    return 'Missing required file: main image';
   }
 
   // Validate file types
@@ -30,7 +20,7 @@ function validateAppraisalRequest(req) {
   // Check file sizes
   const maxSize = 10 * 1024 * 1024; // 10MB
   
-  for (const [key, fileArray] of Object.entries(req.files)) {
+  for (const [key, fileArray] of Object.entries(req.files || {})) {
     const file = fileArray[0];
     if (!allowedMimeTypes.includes(file.mimetype)) {
       return `Invalid file type for ${key}. Allowed types: JPEG, PNG, WebP`;
