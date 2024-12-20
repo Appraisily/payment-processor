@@ -1,6 +1,20 @@
 # Payment Processor Service
 
-A Node.js service that handles Stripe payments, records transactions, manages art appraisal workflows, and integrates with WordPress for content management.
+A Node.js service that handles Stripe payments, records transactions, manages art appraisal workflows, and integrates with WordPress for content management. Built following modular design principles and best practices.
+
+## Code Organization
+
+This project follows these best practices for code organization:
+
+- **Single Responsibility**: Each file has a single, well-defined purpose
+- **Modular Design**: Code is broken down into small, focused modules
+- **Separation of Concerns**: Logic is separated into appropriate layers:
+  - Routes: Handle HTTP requests and input validation
+  - Services: Contain business logic
+  - Utils: Provide reusable helper functions
+- **Clear Dependencies**: Each module explicitly declares its dependencies
+- **Error Handling**: Consistent error handling and logging throughout
+- **Configuration Management**: Centralized configuration with proper secret management
 
 ## File Structure
 
@@ -11,20 +25,33 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 │   ├── routes/
 │   │   ├── webhookRoutes.js       # Stripe webhook handling
 │   │   ├── stripeRoutes.js        # Stripe API endpoints
-│   │   └── appraisalRoutes.js     # Appraisal submission handling
+│   │   └── appraisalRoutes.js     # Appraisal submission endpoints
 │   ├── services/
 │   │   ├── webhookHandler.js      # Webhook processing logic
 │   │   ├── checkoutProcessor.js   # Checkout session processing
 │   │   ├── backgroundProcessor.js  # Async image processing
 │   │   └── appraisalProcessor.js  # Appraisal submission processing
 │   └── utils/
-│       ├── errorLogger.js         # Error logging to Google Sheets
+│       ├── errorLogger.js         # Centralized error logging
 │       ├── emailService.js        # Email notifications
 │       ├── imageProcessor.js      # Image optimization
 │       ├── validators.js          # Request validation
 │       └── wordPressClient.js     # WordPress API integration
 ├── Dockerfile                     # Container configuration
 └── package.json                   # Project dependencies
+
+Each directory serves a specific purpose:
+
+- **routes/**: HTTP endpoint definitions and request handling
+- **services/**: Core business logic implementation
+- **utils/**: Reusable helper functions and third-party integrations
+
+This structure ensures:
+- Clear separation of concerns
+- Easy location of functionality
+- Simplified testing and maintenance
+- Reduced code duplication
+- Better scalability
 ```
 
 ## Endpoints

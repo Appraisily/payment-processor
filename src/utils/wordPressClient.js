@@ -8,6 +8,7 @@ function getAuthHeader(config) {
 
 function getCommonHeaders(config) {
   return {
+    Authorization: getAuthHeader(config),
     'Content-Type': 'application/json',
     'User-Agent': 'Appraisily-Payment-Processor/1.0',
     'X-Requested-With': 'XMLHttpRequest',
@@ -18,24 +19,24 @@ function getCommonHeaders(config) {
 
 async function createInitialPost(postData, config) {
   try {
-    console.log('Creating WordPress post...');
+    console.log('Creating WordPress post with data:', JSON.stringify(postData, null, 2));
 
     // Prepare metadata with both ACF fields and regular meta fields
     const meta = {
       ...postData.meta,
-      _thumbnail_id: '',  // Featured image
-      // ACF fields
-      main: '',
-      signature: '',
-      age: '',
-      // Regular meta fields
-      _session_id: postData.meta.session_id,
-      session_id: postData.meta.session_id,
-      _customer_email: postData.meta.customer_email,
-      customer_email: postData.meta.customer_email,
-      _customer_name: postData.meta.customer_name,
-      customer_name: postData.meta.customer_name
+      _thumbnail_id: '',           // Featured image
+      main: '',                    // ACF field
+      signature: '',               // ACF field
+      age: '',                     // ACF field
+      session_id: postData.meta.session_id,           // Regular meta
+      _session_id: postData.meta.session_id,          // ACF field prefix
+      customer_email: postData.meta.customer_email,   // Regular meta
+      _customer_email: postData.meta.customer_email,  // ACF field prefix
+      customer_name: postData.meta.customer_name,     // Regular meta
+      _customer_name: postData.meta.customer_name     // ACF field prefix
     };
+
+    console.log('Prepared metadata:', JSON.stringify(meta, null, 2));
 
     const response = await axios.post(
       `${config.WORDPRESS_API_URL}/appraisals`,
@@ -43,15 +44,10 @@ async function createInitialPost(postData, config) {
         ...postData,
         meta
       },
-      {
-        headers: {
-          ...getCommonHeaders(config),
-          Authorization: getAuthHeader(config)
-        }
-      }
+      { headers: getCommonHeaders(config) }
     );
 
-    console.log('WordPress post created successfully');
+    console.log('WordPress post created successfully:', JSON.stringify(response.data, null, 2));
 
     return {
       id: response.data.id,
@@ -113,36 +109,42 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePostWithMedia(postId, updateData, config) {
   try {
-    console.log('Updating post with media:', {
-      postId,
-      meta: updateData.meta
-    });
+    console.log('Updating post with media:', JSON.stringify({
+      postId, updateData
+    }, null, 2));
+
+    // Prepare metadata with both ACF fields and regular meta fields
+    const meta = {
+      ...updateData.meta,
+      _thumbnail_id: updateData.meta.main || '',     // Featured image
+      main: updateData.meta.main || '',             // ACF field
+      _main: updateData.meta.main || '',            // ACF field prefix
+      signature: updateData.meta.signature || '',    // ACF field
+      _signature: updateData.meta.signature || '',   // ACF field prefix
+      age: updateData.meta.age || '',               // ACF field
+      _age: updateData.meta.age || ''               // ACF field prefix
+    };
+
+    console.log('Prepared metadata for update:', JSON.stringify(meta, null, 2));
 
     await axios.patch(
       `${config.WORDPRESS_API_URL}/appraisals/${postId}?acf_format=standard`,
       {
         ...updateData,
-        meta: {
-          ...updateData.meta,
-          _thumbnail_id: updateData.meta.main || '', // Set main image as featured image
-          // ACF fields
-          main: updateData.meta.main || '',
-          signature: updateData.meta.signature || '',
-          age: updateData.meta.age || ''
-        }
+        meta
       },
-      {
-        headers: {
-          ...getCommonHeaders(config),
-          Authorization: getAuthHeader(config)
-        }
-      }
+      { headers: getCommonHeaders(config) }
     );
+
+    console.log('Post updated successfully');
   } catch (error) {
-    console.error('Error updating post:', error);
+    console.error('Error updating post:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
     throw new Error('Failed to update post');
   }
-}
 
 module.exports = {
   createInitialPost,
