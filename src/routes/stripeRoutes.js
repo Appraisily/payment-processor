@@ -6,11 +6,11 @@ function setupStripeRoutes(app, config) {
   const router = express.Router();
 
   // Middleware to verify shared secret
-  const verifySharedSecret = async (req, res, next) => {
+  const verifySharedSecret = (req, res, next) => {
     const sharedSecret = req.headers['x-shared-secret'];
     
     try {
-      const expectedSecret = await config.STRIPE_SHARED_SECRET;
+      const expectedSecret = config.STRIPE_SHARED_SECRET;
       if (!sharedSecret || sharedSecret !== expectedSecret) {
         throw new Error('Invalid or missing shared secret');
       }
@@ -37,12 +37,27 @@ function setupStripeRoutes(app, config) {
   router.get('/session/:sessionId', verifySharedSecret, async (req, res) => {
     const { sessionId } = req.params;
 
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+
     try {
+      // Verify we have the required configuration
+      if (!config.STRIPE_SECRET_KEY_LIVE) {
+        throw new Error('Stripe configuration is not properly loaded');
+      }
+
       // Initialize Stripe with the live key
       const stripe = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
       
       // Retrieve the session
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['customer_details']
+      });
+
+      if (!session) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
       
       // Return only necessary data
       res.json({
@@ -61,6 +76,7 @@ function setupStripeRoutes(app, config) {
         severity: 'Error',
         scriptName: 'stripeRoutes',
         errorCode: error.code || 'UnknownError',
+        errorMessage: `Failed to retrieve session: ${error.message}`,
         errorMessage: error.message,
         stackTrace: error.stack,
         endpoint: req.originalUrl,
@@ -71,8 +87,14 @@ function setupStripeRoutes(app, config) {
         })
       });
 
-      res.status(error.statusCode || 500).json({ 
-        error: error.message 
+      // Handle specific Stripe errors
+      if (error.type === 'StripeInvalidRequestError') {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      // Handle other errors
+      res.status(500).json({ 
+        error: 'Internal server error while retrieving session'
       });
     }
   });
