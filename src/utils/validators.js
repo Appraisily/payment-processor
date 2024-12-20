@@ -9,11 +9,6 @@ function validateAppraisalRequest(req) {
     return 'Invalid session_id format';
   }
 
-  // Validate email format if provided
-  if (req.body.customer_email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(req.body.customer_email)) {
-    return 'Invalid email format';
-  }
-
   // If no files were uploaded, that's okay
   if (!req.files || Object.keys(req.files).length === 0) {
     return null;

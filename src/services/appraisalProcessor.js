@@ -1,15 +1,33 @@
+const stripeModule = require('stripe');
 const { createInitialPost, updatePostWithMedia } = require('../utils/wordPressClient');
 const { processImagesAndUpdate } = require('./backgroundProcessor');
 
 async function processAppraisalSubmission(req, config) {
   const {
     session_id,
-    customer_email,
-    customer_name,
     description
   } = req.body;
 
   try {
+    // Initialize Stripe with the live key
+    const stripe = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
+    
+    // Retrieve the session
+    const session = await stripe.checkout.sessions.retrieve(session_id, {
+      expand: ['customer_details']
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    const customer_email = session.customer_details?.email;
+    const customer_name = session.customer_details?.name;
+
+    if (!customer_email) {
+      throw new Error('Customer email not found in session');
+    }
+
     // Create initial WordPress post immediately
     const postData = {
       title: `Appraisal Request - ${session_id}`,
