@@ -6,17 +6,12 @@ function setupStripeRoutes(app, config) {
   const router = express.Router();
 
   // Middleware to verify shared secret
-  const verifySharedSecret = async (req, res, next) => {
+  const verifySharedSecret = (req, res, next) => {
     const sharedSecret = req.headers['x-shared-secret'];
     
-    try {
-      const expectedSecret = config.STRIPE_SHARED_SECRET;
-      if (!sharedSecret || sharedSecret !== expectedSecret) {
-        throw new Error('Invalid or missing shared secret');
-      }
-      next();
-    } catch (error) {
-      await logError(config, {
+    const expectedSecret = config.STRIPE_SHARED_SECRET;
+    if (!sharedSecret || sharedSecret !== expectedSecret) {
+      logError(config, {
         timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
         severity: 'Warning',
         scriptName: 'stripeRoutes',
@@ -29,8 +24,10 @@ function setupStripeRoutes(app, config) {
           ip: req.ip 
         })
       });
-      res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+    
+    next();
   };
 
   // GET /stripe/session/:sessionId
