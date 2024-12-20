@@ -83,7 +83,8 @@ async function uploadMedia(buffer, filename, config) {
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/wp/v2/media`,
+      // The WORDPRESS_API_URL already includes /wp-json/wp/v2
+      `${config.WORDPRESS_API_URL}/media`,
       form,
       {
         headers: {
