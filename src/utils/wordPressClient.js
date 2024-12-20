@@ -19,15 +19,19 @@ function getCommonHeaders(config) {
 async function createInitialPost(postData, config) {
   try {
     console.log('Creating WordPress post with data:', JSON.stringify(postData, null, 2));
+    
+    // Ensure customer_email is included in the ACF fields
+    const meta = {
+      ...postData.meta,
+      _thumbnail_id: '', // Initialize featured image field
+      customer_email: postData.meta.customer_email || '' // Add customer_email ACF field
+    };
 
     const response = await axios.post(
       `${config.WORDPRESS_API_URL}/appraisals`,
       {
         ...postData,
-        meta: {
-          ...postData.meta,
-          _thumbnail_id: '' // Initialize featured image field
-        }
+        meta
       },
       {
         headers: getCommonHeaders(config)
@@ -57,6 +61,8 @@ async function createInitialPost(postData, config) {
 
 async function uploadMedia(buffer, filename, config) {
   try {
+    console.log('Uploading media to WordPress:', filename);
+
     const form = new FormData();
     form.append('file', buffer, {
       filename,
@@ -64,23 +70,30 @@ async function uploadMedia(buffer, filename, config) {
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/wp/v2/media`,
+      `${config.WORDPRESS_API_URL}/media`,
       form,
       {
         headers: {
           ...form.getHeaders(),
-          ...getCommonHeaders(config),
-          'Content-Type': undefined // Let form-data set this
+          Authorization: getAuthHeader(config),
+          'Content-Type': 'multipart/form-data'
         }
       }
     );
+
+    console.log('Media upload successful:', response.data.id);
 
     return {
       id: response.data.id,
       url: response.data.source_url
     };
   } catch (error) {
-    console.error('Error uploading media:', error);
+    console.error('Error uploading media:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      endpoint: error.config?.url
+    });
     throw new Error('Failed to upload media');
   }
 }

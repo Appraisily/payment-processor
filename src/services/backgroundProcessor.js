@@ -6,11 +6,15 @@ const axios = require('axios');
 
 async function processImagesAndUpdate({ files, postId, config, metadata }) {
   try {
+    console.log('Starting background processing for post:', postId);
+
     // Process and optimize images
     const processedImages = await processImages(files);
+    console.log('Images processed successfully');
 
     // Upload images to WordPress
     const uploadedMedia = await uploadToWordPress(processedImages, config);
+    console.log('Images uploaded to WordPress:', uploadedMedia);
 
     // Update post with media
     await updatePostWithMedia(postId, {
@@ -22,6 +26,7 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
       }
     }, config);
 
+    console.log('Post updated with media IDs');
     // Send notification email
     await sendAppraisalNotification({
       config,
@@ -30,6 +35,7 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
       sessionId: metadata.session_id,
       postUrl: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${postId}&action=edit`
     });
+    console.log('Notification email sent');
 
     // Prepare data for appraisers-backend
     const backendPayload = {
@@ -106,19 +112,25 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
   }
 
 async function processImages(files) {
+  console.log('Processing images:', Object.keys(files));
   const processedImages = {};
   for (const [key, fileArray] of Object.entries(files)) {
     if (fileArray && fileArray[0]) {
+      console.log(`Processing ${key} image`);
       processedImages[key] = await optimizeImage(fileArray[0].buffer);
+      console.log(`${key} image processed successfully`);
     }
   }
   return processedImages;
 }
 
 async function uploadToWordPress(images, config) {
+  console.log('Uploading images to WordPress:', Object.keys(images));
   const uploadedMedia = {};
   for (const [key, buffer] of Object.entries(images)) {
+    console.log(`Uploading ${key} image`);
     uploadedMedia[key] = await uploadMedia(buffer, `${key}-${Date.now()}.jpg`, config);
+    console.log(`${key} image uploaded successfully:`, uploadedMedia[key].id);
   }
   return uploadedMedia;
 }

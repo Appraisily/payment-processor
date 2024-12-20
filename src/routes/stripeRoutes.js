@@ -6,28 +6,31 @@ function setupStripeRoutes(app, config) {
   const router = express.Router();
 
   // Middleware to verify shared secret
-  const verifySharedSecret = (req, res, next) => {
+  const verifySharedSecret = async (req, res, next) => {
     const sharedSecret = req.headers['x-shared-secret'];
     
-    const expectedSecret = config.STRIPE_SHARED_SECRET;
-    if (!sharedSecret || sharedSecret !== expectedSecret) {
-      logError(config, {
-        timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
-        severity: 'Warning',
-        scriptName: 'stripeRoutes',
-        errorCode: 'AuthenticationError',
-        errorMessage: 'Invalid or missing shared secret',
-        endpoint: req.originalUrl,
-        environment: 'Production',
-        additionalContext: JSON.stringify({ 
-          hasSharedSecret: !!sharedSecret,
-          ip: req.ip 
-        })
-      });
-      return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      if (!sharedSecret || sharedSecret !== config.STRIPE_SHARED_SECRET) {
+        await logError(config, {
+          timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+          severity: 'Warning',
+          scriptName: 'stripeRoutes',
+          errorCode: 'AuthenticationError',
+          errorMessage: 'Invalid or missing shared secret',
+          endpoint: req.originalUrl,
+          environment: 'Production',
+          additionalContext: JSON.stringify({ 
+            hasSharedSecret: !!sharedSecret,
+            ip: req.ip 
+          })
+        });
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      next();
+    } catch (error) {
+      console.error('Error in verifySharedSecret:', error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
-    
-    next();
   };
 
   // GET /stripe/session/:sessionId
