@@ -47,6 +47,8 @@ async function loadConfig() {
     WORDPRESS_API_URL: await getSecret('WORDPRESS_API_URL'),
     WORDPRESS_USERNAME: await getSecret('wp_username'),
     WORDPRESS_APP_PASSWORD: await getSecret('wp_app_password'),
+    SHARED_SECRET: await getSecret('SHARED_SECRET'),
+    APPRAISERS_BACKEND_URL: process.env.APPRAISERS_BACKEND_URL || 'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
     
     // Admin Configuration
     ADMIN_EMAIL: await getSecret('ADMIN_EMAIL'),

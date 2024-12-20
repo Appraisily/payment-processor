@@ -18,7 +18,7 @@ function getCommonHeaders(config) {
 }
 async function createInitialPost(postData, config) {
   try {
-    console.log('Creating WordPress post with data:', JSON.stringify(postData, null, 2));
+    console.log('Creating WordPress post...');
     
     // Ensure customer_email is included in the ACF fields
     const meta = {
@@ -38,7 +38,7 @@ async function createInitialPost(postData, config) {
       }
     );
 
-    console.log('WordPress post creation response:', JSON.stringify(response.data, null, 2));
+    console.log('WordPress post created successfully');
 
     return {
       id: response.data.id,
@@ -66,17 +66,18 @@ async function uploadMedia(buffer, filename, config) {
     const form = new FormData();
     form.append('file', buffer, {
       filename,
-      contentType: 'image/jpeg'
+      contentType: 'image/jpeg',
+      knownLength: buffer.length
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/media`,
+      `${config.WORDPRESS_API_URL}/wp/v2/media`,
       form,
       {
         headers: {
           ...form.getHeaders(),
           Authorization: getAuthHeader(config),
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': undefined // Let form-data set this
         }
       }
     );

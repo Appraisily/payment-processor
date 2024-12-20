@@ -55,19 +55,23 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
     // Send request to appraisers-backend
     try {
       await axios.post(
-        'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
+        config.APPRAISERS_BACKEND_URL || 'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
         backendPayload,
         {
           headers: {
             'Content-Type': 'application/json',
-            'x-shared-secret': config.STRIPE_SHARED_SECRET
+            'x-shared-secret': config.SHARED_SECRET
           },
           timeout: 10000 // 10 second timeout
         }
       );
       console.log('Successfully notified appraisers-backend');
     } catch (backendError) {
-      console.error('Error notifying appraisers-backend:', backendError);
+      console.error('Error notifying appraisers-backend:', {
+        message: backendError.message,
+        response: backendError.response?.data,
+        status: backendError.response?.status
+      });
       await logError(config, {
         severity: 'Warning',
         scriptName: 'backgroundProcessor',

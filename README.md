@@ -1,24 +1,90 @@
 # Payment Processor Service
 
-A Node.js service that handles Stripe payments, records transactions, and manages art appraisal workflows.
+A Node.js service that handles Stripe payments, records transactions, manages art appraisal workflows, and integrates with WordPress for content management.
 
 ## File Structure
 
 ```
-├── index.js              # Main application entry point
-├── config.js             # Configuration and secrets management
-├── errorLogger.js        # Error logging functionality
-├── Dockerfile           # Container configuration
-└── package.json         # Project dependencies
+├── src/
+│   ├── index.js                    # Main application entry point
+│   ├── config.js                   # Configuration and secrets management
+│   ├── routes/
+│   │   ├── webhookRoutes.js       # Stripe webhook handling
+│   │   ├── stripeRoutes.js        # Stripe API endpoints
+│   │   └── appraisalRoutes.js     # Appraisal submission handling
+│   ├── services/
+│   │   ├── webhookHandler.js      # Webhook processing logic
+│   │   ├── checkoutProcessor.js   # Checkout session processing
+│   │   ├── backgroundProcessor.js  # Async image processing
+│   │   └── appraisalProcessor.js  # Appraisal submission processing
+│   └── utils/
+│       ├── errorLogger.js         # Error logging to Google Sheets
+│       ├── emailService.js        # Email notifications
+│       ├── imageProcessor.js      # Image optimization
+│       ├── validators.js          # Request validation
+│       └── wordPressClient.js     # WordPress API integration
+├── Dockerfile                     # Container configuration
+└── package.json                   # Project dependencies
 ```
 
 ## Endpoints
 
-### POST `/stripe-webhook`
+### Stripe Webhooks
+
+#### POST `/stripe-webhook`
 Handles Stripe webhook events for completed checkout sessions.
 
 **Headers Required:**
 - `stripe-signature`: Webhook signature from Stripe
+
+#### POST `/stripe-webhook-test`
+Test environment webhook endpoint with the same functionality.
+
+### Stripe API
+
+#### GET `/stripe/session/:sessionId`
+Retrieves session information from Stripe.
+
+**Headers Required:**
+- `x-shared-secret`: Authentication secret
+
+**Response:**
+```json
+{
+  "customer_details": {
+    "name": "string",
+    "email": "string"
+  },
+  "amount_total": number,
+  "currency": "string",
+  "payment_status": "string"
+}
+```
+
+### Appraisal Submission
+
+#### POST `/api/appraisals`
+Handles appraisal submissions with image uploads.
+
+**Content-Type:** `multipart/form-data`
+
+**Fields:**
+- `session_id`: Stripe session ID
+- `customer_email`: Customer's email
+- `customer_name`: (optional) Customer's name
+- `description`: (optional) Appraisal description
+- `main`: Main image file
+- `signature`: (optional) Signature image file
+- `age`: (optional) Age verification image file
+
+**Response:**
+```json
+{
+  "success": true,
+  "post_id": number,
+  "post_url": "string"
+}
+```
 
 **Webhook Event Structure:**
 ```json
@@ -47,50 +113,52 @@ Health check endpoint that returns service status.
 
 ## Required Secrets
 
-Configure the following secrets in Google Cloud Secret Manager:
+The following secrets must be configured in Google Cloud Secret Manager:
 
 ```
-STRIPE_SECRET_KEY_TEST           # Stripe test environment API key
-STRIPE_SECRET_KEY_LIVE          # Stripe live environment API key
-STRIPE_WEBHOOK_SECRET_TEST      # Stripe test webhook signing secret
-STRIPE_WEBHOOK_SECRET_LIVE      # Stripe live webhook signing secret
-SALES_SPREADSHEET_ID           # Google Sheet ID for sales records
+STRIPE_SECRET_KEY_TEST            # Stripe test environment API key
+STRIPE_SECRET_KEY_LIVE           # Stripe live environment API key
+STRIPE_WEBHOOK_SECRET_TEST       # Stripe test webhook signing secret
+STRIPE_WEBHOOK_SECRET_LIVE       # Stripe live webhook signing secret
+STRIPE_SHARED_SECRET            # Shared secret for API authentication
+SALES_SPREADSHEET_ID            # Google Sheet ID for sales records
 PENDING_APPRAISALS_SPREADSHEET_ID # Google Sheet ID for pending appraisals
-LOG_SPREADSHEET_ID             # Google Sheet ID for error logs
-SENDGRID_API_KEY              # SendGrid API key
-SENDGRID_EMAIL                # Verified sender email for SendGrid
+LOG_SPREADSHEET_ID              # Google Sheet ID for error logs
+SENDGRID_API_KEY               # SendGrid API key
+SENDGRID_EMAIL                 # Verified sender email for SendGrid
 SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED # SendGrid template ID
+WORDPRESS_API_URL              # WordPress REST API endpoint
+wp_username                    # WordPress username
+wp_app_password               # WordPress application password
+ADMIN_EMAIL                   # Admin notification email
+SHARED_SECRET                 # Secret for backend communication
 ```
 
 ## Core Functions
 
-### Payment Processing
-```javascript
-// Stripe webhook event handler
-app.post('/stripe-webhook', async (req, res) => {
-  // Handles payment completion events
-  // Verifies webhook signatures
-  // Records transactions
-  // Sends confirmation emails
-})
-```
-
 ### Configuration Management
-```javascript
-// config.js
-async function getSecret(secretName)
-// Retrieves secrets from Google Cloud Secret Manager
+- `loadConfig()`: Loads and caches all configuration values from Secret Manager
+- `getSecret(secretName)`: Retrieves individual secrets
 
-async function loadConfig()
-// Loads and caches all configuration values
-```
+### Payment Processing
+- `handleStripeWebhook(req, res, config, mode)`: Processes Stripe webhook events
+- `processCheckoutSession(session, config, mode)`: Handles completed checkout sessions
+
+### Appraisal Management
+- `processAppraisalSubmission(req, config)`: Handles new appraisal submissions
+- `processImagesAndUpdate(data)`: Processes and uploads appraisal images
+- `optimizeImage(buffer)`: Optimizes uploaded images
+
+### WordPress Integration
+- `createInitialPost(postData, config)`: Creates WordPress posts
+- `uploadMedia(buffer, filename, config)`: Uploads media files
+- `updatePostWithMedia(postId, updateData, config)`: Updates posts with media
 
 ### Error Logging
-```javascript
-// errorLogger.js
-async function logError(config, errorDetails)
-// Logs errors to Google Sheets with detailed information
-```
+- `logError(config, errorDetails)`: Logs errors to Google Sheets
+
+### Email Notifications
+- `sendAppraisalNotification(data)`: Sends email notifications for new submissions
 
 ## Google Sheets Structure
 
