@@ -8,7 +8,6 @@ function getAuthHeader(config) {
 
 function getCommonHeaders(config) {
   return {
-    Authorization: getAuthHeader(config),
     'Content-Type': 'application/json',
     'User-Agent': 'Appraisily-Payment-Processor/1.0',
     'X-Requested-With': 'XMLHttpRequest',
@@ -16,15 +15,26 @@ function getCommonHeaders(config) {
     Referer: 'https://payment-processor-856401495068.us-central1.run.app'
   };
 }
+
 async function createInitialPost(postData, config) {
   try {
     console.log('Creating WordPress post...');
-    
-    // Ensure customer_email is included in the ACF fields
+
+    // Prepare metadata with both ACF fields and regular meta fields
     const meta = {
       ...postData.meta,
-      _thumbnail_id: '', // Initialize featured image field
-      customer_email: postData.meta.customer_email || '' // Add customer_email ACF field
+      _thumbnail_id: '',  // Featured image
+      // ACF fields
+      main: '',
+      signature: '',
+      age: '',
+      // Regular meta fields
+      _session_id: postData.meta.session_id,
+      session_id: postData.meta.session_id,
+      _customer_email: postData.meta.customer_email,
+      customer_email: postData.meta.customer_email,
+      _customer_name: postData.meta.customer_name,
+      customer_name: postData.meta.customer_name
     };
 
     const response = await axios.post(
@@ -34,7 +44,10 @@ async function createInitialPost(postData, config) {
         meta
       },
       {
-        headers: getCommonHeaders(config)
+        headers: {
+          ...getCommonHeaders(config),
+          Authorization: getAuthHeader(config)
+        }
       }
     );
 
@@ -66,18 +79,16 @@ async function uploadMedia(buffer, filename, config) {
     const form = new FormData();
     form.append('file', buffer, {
       filename,
-      contentType: 'image/jpeg',
-      knownLength: buffer.length
+      contentType: 'image/jpeg'
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/media`,
+      `${config.WORDPRESS_API_URL}/wp/v2/media`,
       form,
       {
         headers: {
           ...form.getHeaders(),
-          Authorization: getAuthHeader(config),
-          'Content-Type': undefined // Let form-data set this
+          Authorization: getAuthHeader(config)
         }
       }
     );
@@ -101,17 +112,29 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePostWithMedia(postId, updateData, config) {
   try {
-    await axios.post(
+    console.log('Updating post with media:', {
+      postId,
+      meta: updateData.meta
+    });
+
+    await axios.patch(
       `${config.WORDPRESS_API_URL}/appraisals/${postId}?acf_format=standard`,
       {
         ...updateData,
         meta: {
           ...updateData.meta,
-          _thumbnail_id: updateData.meta.main || '' // Set main image as featured image
+          _thumbnail_id: updateData.meta.main || '', // Set main image as featured image
+          // ACF fields
+          main: updateData.meta.main || '',
+          signature: updateData.meta.signature || '',
+          age: updateData.meta.age || ''
         }
       },
       {
-        headers: getCommonHeaders(config)
+        headers: {
+          ...getCommonHeaders(config),
+          Authorization: getAuthHeader(config)
+        }
       }
     );
   } catch (error) {
