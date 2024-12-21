@@ -1,19 +1,6 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-async function updateWordPressMetadata(postId, metadataKey, metadataValue, config) {
-  try {
-    await updatePost(postId, {
-      acf: {
-        [metadataKey]: metadataValue
-      }
-    }, config);
-  } catch (error) {
-    console.error(`Error updating WordPress metadata for ${metadataKey}:`, error);
-    throw error;
-  }
-}
-
 async function updatePost(postId, data, config) {
   const response = await axios.post(
     `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
@@ -54,12 +41,9 @@ async function createInitialPost(postData, config) {
 
     // Then update ACF fields in a separate request
     await updatePostAcfFields(response.data.id, {
-      processing_status: 'pending',
       session_id: postData.meta.session_id,
       customer_email: postData.meta.customer_email,
       customer_name: postData.meta.customer_name || '',
-      customer_description: postData.meta.customer_description || '',
-      submission_date: postData.meta.submission_date,
       main: '',
       signature: '',
       age: ''
@@ -126,11 +110,11 @@ async function uploadMedia(buffer, filename, config) {
 async function updatePostAcfFields(postId, fields, config) {
   try {
     console.log('Updating post ACF fields:', JSON.stringify({ postId, fields }, null, 2));
-    
-    // Update each field individually using the new metadata function
-    for (const [key, value] of Object.entries(fields)) {
-      await updateWordPressMetadata(postId, key, value, config);
-    }
+
+    // Update all fields in a single request with the correct structure
+    await updatePost(postId, {
+      fields: fields
+    }, config);
     
     console.log('ACF fields updated successfully');
   } catch (error) {
@@ -147,13 +131,11 @@ async function updatePostAcfFields(postId, fields, config) {
 async function updatePostWithMedia(postId, updateData, config) {
   try {
     console.log('Updating post with media:', JSON.stringify({ postId, updateData }, null, 2));
-    
-    // Update each media field using the new metadata function
-    if (updateData.meta) {
-      for (const [key, value] of Object.entries(updateData.meta)) {
-        await updateWordPressMetadata(postId, key, value, config);
-      }
-    }
+
+    // Update all fields in a single request
+    await updatePost(postId, {
+      fields: updateData.meta || {}
+    }, config);
 
     console.log('Post updated successfully');
   } catch (error) {
@@ -171,6 +153,5 @@ module.exports = {
   createInitialPost,
   uploadMedia,
   updatePostWithMedia,
-  updatePostAcfFields,
-  updateWordPressMetadata
+  updatePostAcfFields
 };
