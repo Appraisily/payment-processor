@@ -1,7 +1,9 @@
 const { Storage } = require('@google-cloud/storage');
 const { logError } = require('./errorLogger');
 
-const storage = new Storage();
+const storage = new Storage({
+  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID
+});
 
 /**
  * Uploads a file to Google Cloud Storage without blocking
@@ -15,16 +17,11 @@ const storage = new Storage();
 async function uploadToGCS(buffer, filename, config, metadata = {}) {
   try {
     let bucket = storage.bucket(config.GCS_BUCKET_NAME);
-    const [exists] = await bucket.exists();
-    
-    if (!exists) {
-      console.warn('Bucket does not exist:', config.GCS_BUCKET_NAME);
-      return null;
-    }
 
     // Create write stream with metadata
     const file = bucket.file(filename);
     const stream = file.createWriteStream({
+      resumable: false,
       metadata: {
         contentType: 'image/jpeg',
         metadata: {
@@ -35,36 +32,41 @@ async function uploadToGCS(buffer, filename, config, metadata = {}) {
     });
 
     // Handle upload completion
-    await new Promise((resolve, reject) => {
+    const uploadResult = await new Promise((resolve, reject) => {
       stream.on('finish', resolve);
       stream.on('error', reject);
       stream.end(buffer);
     });
 
-    // Generate signed URL valid for 7 days
-    const [signedUrl] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    console.log(`File ${filename} uploaded successfully`);
 
-    return signedUrl;
+    // Return the public URL instead of a signed URL
+    return `https://storage.googleapis.com/${config.GCS_BUCKET_NAME}/${filename}`;
 
   } catch (error) {
-    // Don't throw error for background operations
-    console.error('GCS upload error:', error);
-    // Log error but don't throw - this is a background operation
+    console.error('GCS upload error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      bucket: config.GCS_BUCKET_NAME,
+      filename
+    });
+
     await logError(config, {
       severity: 'Warning',
       scriptName: 'storageClient',
       errorCode: 'GCS_UPLOAD_ERROR',
       errorMessage: error.message,
       stackTrace: error.stack,
-      additionalContext: JSON.stringify({
+      additionalContext: JSON.stringify({ 
+        error: error.message,
+        code: error.code,
+        bucket: config.GCS_BUCKET_NAME,
         filename,
         metadata
       })
     });
+
     return null;
   }
 }
@@ -80,34 +82,46 @@ async function uploadToGCS(buffer, filename, config, metadata = {}) {
 async function backupFiles(files, config, metadata = {}) {
   const backupPromises = {};
   const timestamp = Date.now();
+  const results = {};
 
   // Start all uploads in parallel
   for (const [key, fileArray] of Object.entries(files)) {
     if (fileArray && fileArray[0]) {
-      const filename = `${metadata.session_id}/${key}-${timestamp}.jpg`;
-      backupPromises[key] = uploadToGCS(
-        fileArray[0].buffer,
-        filename,
-        config,
-        {
-          ...metadata,
-          fileType: key
-        }
-      );
+      try {
+        const filename = `${metadata.session_id}/${key}-${timestamp}.jpg`;
+        const url = await uploadToGCS(
+          fileArray[0].buffer,
+          filename,
+          config,
+          {
+            ...metadata,
+            fileType: key
+          }
+        );
+        
+        results[key] = url;
+        console.log(`Backup successful for ${key}:`, url);
+      } catch (error) {
+        console.error(`Failed to backup ${key}:`, error);
+        results[key] = null;
+        
+        await logError(config, {
+          severity: 'Warning',
+          scriptName: 'storageClient',
+          errorCode: 'FILE_BACKUP_ERROR',
+          errorMessage: `Failed to backup ${key}: ${error.message}`,
+          stackTrace: error.stack,
+          additionalContext: JSON.stringify({
+            key,
+            session_id: metadata.session_id,
+            error: error.message
+          })
+        });
+      }
     }
   }
 
-  // Wait for all uploads to complete
-  const results = {};
-  for (const [key, promise] of Object.entries(backupPromises)) {
-    try {
-      results[key] = await promise;
-    } catch (error) {
-      console.error(`Failed to backup ${key}:`, error);
-      results[key] = null;
-    }
-  }
-
+  console.log('Backup results:', results);
   return results;
 }
 
