@@ -133,23 +133,27 @@ async function updatePostWithMedia(postId, updateData, config) {
     console.log('Updating post with media:', JSON.stringify({
       postId, updateData
     }, null, 2));
-
+    
+    // For ACF image fields, we need to use the media ID directly
+    const mediaFields = {
+      main: updateData.meta.main || '',
+      signature: updateData.meta.signature || '',
+      age: updateData.meta.age || '',
+      processing_status: updateData.meta.processing_status || ''
+    };
+    
+    console.log('Updating ACF fields:', mediaFields);
+    
     await axios.post(
       `${config.WORDPRESS_API_URL}/appraisals/${postId}?acf_format=standard`,
       {
         meta: {
           _thumbnail_id: updateData.meta.main || ''  // Set featured image
         },
-        acf: {
-          main: updateData.meta.main || '',
-          signature: updateData.meta.signature || '',
-          age: updateData.meta.age || '',
-          processing_status: updateData.meta.processing_status || ''
-        }
+        acf: mediaFields
       },
       { headers: getCommonHeaders(config) }
     );
-
     console.log('Post updated successfully');
   } catch (error) {
     console.error('Error updating post:', {

@@ -157,6 +157,13 @@ SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED # SendGrid template ID
 WORDPRESS_API_URL              # WordPress REST API endpoint
 wp_username                    # WordPress username
 wp_app_password               # WordPress application password
+
+Note: The WORDPRESS_API_URL should include the full path to the WordPress REST API
+including '/wp-json/wp/v2'. For example:
+  https://resources.appraisily.com/wp-json/wp/v2
+
+The code will handle the endpoints correctly without needing to append '/wp/v2' again.
+
 ADMIN_EMAIL                   # Admin notification email
 SHARED_SECRET                 # Secret for backend communication
 ```
