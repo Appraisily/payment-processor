@@ -146,8 +146,7 @@ async function updatePostAcfFields(postId, fields, config) {
 
 async function updatePostWithMedia(postId, updateData, config) {
   try {
-    console.log('Updating post with media:', JSON.stringify({
-      postId, updateData
+    console.log('Updating post with media:', JSON.stringify({ postId, updateData }, null, 2));
     
     // Update each media field using the new metadata function
     if (updateData.meta) {
@@ -171,7 +170,7 @@ async function updatePostWithMedia(postId, updateData, config) {
 module.exports = {
   createInitialPost,
   uploadMedia,
-  updatePostWithMedia, 
+  updatePostWithMedia,
   updatePostAcfFields,
   updateWordPressMetadata
 };
