@@ -2,11 +2,19 @@ const { optimizeImage } = require('../utils/imageProcessor');
 const { uploadMedia, updatePostWithMedia } = require('../utils/wordPressClient');
 const { sendAppraisalNotification } = require('../utils/emailService');
 const { logError } = require('../utils/errorLogger');
+const { backupFiles } = require('../utils/storageClient');
 const axios = require('axios');
 
 async function processImagesAndUpdate({ files, postId, config, metadata }) {
   try {
     console.log('Starting background processing for post:', postId);
+
+    // Start GCS backup in parallel - don't await
+    const backupPromise = backupFiles(files, config, {
+      session_id: metadata.session_id,
+      customer_email: metadata.customer_email,
+      post_id: postId
+    });
 
     // Process and optimize images
     const processedImages = await processImages(files);
@@ -25,6 +33,10 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
         age: uploadedMedia.age?.id || ''            // ACF field for age image
       }
     }, config);
+
+    // Check GCS backup results without blocking
+    const backupUrls = await backupPromise;
+    console.log('GCS backup completed:', backupUrls);
 
     console.log('Post updated with media IDs');
     // Send notification email

@@ -48,6 +48,7 @@ async function loadConfig() {
     WORDPRESS_USERNAME: await getSecret('wp_username'),
     WORDPRESS_APP_PASSWORD: await getSecret('wp_app_password'),
     SHARED_SECRET: await getSecret('SHARED_SECRET'),
+    GCS_BUCKET_NAME: process.env.GCS_BUCKET_NAME || 'appraisily-image-backups',
     APPRAISERS_BACKEND_URL: process.env.APPRAISERS_BACKEND_URL || 'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
     
     // Admin Configuration
