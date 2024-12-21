@@ -1,6 +1,28 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
+async function updateWordPressMetadata(postId, metadataKey, metadataValue, config) {
+  try {
+    await updatePost(postId, {
+      acf: {
+        [metadataKey]: metadataValue
+      }
+    }, config);
+  } catch (error) {
+    console.error(`Error updating WordPress metadata for ${metadataKey}:`, error);
+    throw error;
+  }
+}
+
+async function updatePost(postId, data, config) {
+  const response = await axios.post(
+    `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
+    data,
+    { headers: getCommonHeaders(config) }
+  );
+  return response.data;
+}
+
 function getAuthHeader(config) {
   const credentials = Buffer.from(`${config.WORDPRESS_USERNAME}:${config.WORDPRESS_APP_PASSWORD}`).toString('base64');
   return `Basic ${credentials}`;
@@ -9,11 +31,8 @@ function getAuthHeader(config) {
 function getCommonHeaders(config) {
   return {
     Authorization: getAuthHeader(config),
-    'Content-Type': 'application/json',
-    'User-Agent': 'Appraisily-Payment-Processor/1.0',
-    'X-Requested-With': 'XMLHttpRequest',
-    Origin: 'https://payment-processor-856401495068.us-central1.run.app',
-    Referer: 'https://payment-processor-856401495068.us-central1.run.app'
+    'Content-Type': 'application/json', 
+    'Accept': 'application/json'
   };
 }
 
@@ -108,14 +127,11 @@ async function updatePostAcfFields(postId, fields, config) {
   try {
     console.log('Updating post ACF fields:', JSON.stringify({ postId, fields }, null, 2));
     
-    // Update ACF fields through the main endpoint
-    await axios.put(
-      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
-      {
-        acf: fields
-      },
-      { headers: getCommonHeaders(config) }
-    );
+    // Update each field individually using the new metadata function
+    for (const [key, value] of Object.entries(fields)) {
+      await updateWordPressMetadata(postId, key, value, config);
+    }
+    
     console.log('ACF fields updated successfully');
   } catch (error) {
     console.error('Error updating ACF fields:', {
@@ -132,21 +148,13 @@ async function updatePostWithMedia(postId, updateData, config) {
   try {
     console.log('Updating post with media:', JSON.stringify({
       postId, updateData
-    }, null, 2));
     
-    await axios.put(
-      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
-      {
-        acf: {
-          main: updateData.meta.main || '',
-          signature: updateData.meta.signature || '',
-          age: updateData.meta.age || '',
-          processing_status: updateData.meta.processing_status || '',
-          error_message: updateData.meta.error_message || ''
-        }
-      },
-      { headers: getCommonHeaders(config) }
-    );
+    // Update each media field using the new metadata function
+    if (updateData.meta) {
+      for (const [key, value] of Object.entries(updateData.meta)) {
+        await updateWordPressMetadata(postId, key, value, config);
+      }
+    }
 
     console.log('Post updated successfully');
   } catch (error) {
@@ -163,6 +171,7 @@ async function updatePostWithMedia(postId, updateData, config) {
 module.exports = {
   createInitialPost,
   uploadMedia,
-  updatePostWithMedia,
-  updatePostAcfFields
+  updatePostWithMedia, 
+  updatePostAcfFields,
+  updateWordPressMetadata
 };
