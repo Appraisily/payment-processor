@@ -1,7 +1,6 @@
 const { Storage } = require('@google-cloud/storage');
 const { logError } = require('./errorLogger');
 
-// Initialize storage client
 const storage = new Storage();
 
 /**
@@ -11,25 +10,16 @@ const storage = new Storage();
  * @param {string} filename - Name for the file in GCS
  * @param {Object} config - Application configuration
  * @param {Object} metadata - Additional metadata for the file
- * @returns {Promise<string>} - GCS URL of the uploaded file
+ * @returns {Promise<string>} - GCS signed URL of the uploaded file
  */
 async function uploadToGCS(buffer, filename, config, metadata = {}) {
   try {
-    // Get bucket, create if doesn't exist
     let bucket = storage.bucket(config.GCS_BUCKET_NAME);
     const [exists] = await bucket.exists();
     
     if (!exists) {
-      await bucket.create();
-      // Set lifecycle policy - delete files after 7 days
-      await bucket.setMetadata({
-        lifecycle: {
-          rule: [{
-            action: { type: 'Delete' },
-            condition: { age: 7 }
-          }]
-        }
-      });
+      console.warn('Bucket does not exist:', config.GCS_BUCKET_NAME);
+      return null;
     }
 
     // Create write stream with metadata
@@ -51,11 +41,17 @@ async function uploadToGCS(buffer, filename, config, metadata = {}) {
       stream.end(buffer);
     });
 
-    // Make file public and get URL
-    await file.makePublic();
-    return `https://storage.googleapis.com/${config.GCS_BUCKET_NAME}/${filename}`;
+    // Generate signed URL valid for 7 days
+    const [signedUrl] = await file.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return signedUrl;
 
   } catch (error) {
+    // Don't throw error for background operations
     console.error('GCS upload error:', error);
     // Log error but don't throw - this is a background operation
     await logError(config, {
