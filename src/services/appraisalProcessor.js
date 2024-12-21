@@ -2,11 +2,17 @@ const stripeModule = require('stripe');
 const { createInitialPost, updatePostWithMedia } = require('../utils/wordPressClient');
 const { processImagesAndUpdate } = require('./backgroundProcessor');
 
-async function processAppraisalSubmission(req, config) {
+async function processAppraisalSubmission(req, config, res) {
   const {
     session_id,
     description
   } = req.body;
+
+  // Send immediate 200 response
+  res.status(200).json({
+    success: true,
+    message: 'Processing started'
+  });
 
   try {
     // Initialize Stripe with the live key
@@ -48,8 +54,9 @@ async function processAppraisalSubmission(req, config) {
     };
 
     const post = await createInitialPost(postData, config);
+    console.log('WordPress post created:', post.id);
 
-    // Start background processing
+    // Continue with background processing regardless of WordPress success
     processImagesAndUpdate({
       files: req.files,
       postId: post.id,
@@ -65,13 +72,17 @@ async function processAppraisalSubmission(req, config) {
       console.error('Background processing error:', error);
     });
 
-    return {
-      postId: post.id,
-      postUrl: post.editUrl
-    };
   } catch (error) {
     console.error('Error in processAppraisalSubmission:', error);
-    throw error;
+    // Log error but continue since response was already sent
+    await logError(config, {
+      severity: 'Error',
+      scriptName: 'appraisalProcessor',
+      errorCode: 'PROCESSING_ERROR',
+      errorMessage: error.message,
+      stackTrace: error.stack,
+      additionalContext: JSON.stringify({ session_id })
+    }).catch(console.error); // Prevent error logging failures from breaking flow
   }
 }
 

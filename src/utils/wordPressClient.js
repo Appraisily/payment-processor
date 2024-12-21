@@ -107,15 +107,15 @@ async function uploadMedia(buffer, filename, config) {
 async function updatePostAcfFields(postId, fields, config) {
   try {
     console.log('Updating post ACF fields:', JSON.stringify({ postId, fields }, null, 2));
-
-    await axios.post(
-      `${config.WORDPRESS_API_URL}/appraisals/${postId}/fields`,
+    
+    // Update ACF fields through the main endpoint
+    await axios.put(
+      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
       {
-        fields: fields
+        acf: fields
       },
       { headers: getCommonHeaders(config) }
     );
-
     console.log('ACF fields updated successfully');
   } catch (error) {
     console.error('Error updating ACF fields:', {
@@ -134,10 +134,10 @@ async function updatePostWithMedia(postId, updateData, config) {
       postId, updateData
     }, null, 2));
     
-    await axios.post(
-      `${config.WORDPRESS_API_URL}/appraisals/${postId}/fields`,
+    await axios.put(
+      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
       {
-        fields: {
+        acf: {
           main: updateData.meta.main || '',
           signature: updateData.meta.signature || '',
           age: updateData.meta.age || '',
@@ -146,21 +146,7 @@ async function updatePostWithMedia(postId, updateData, config) {
         }
       },
       { headers: getCommonHeaders(config) }
-    ).catch(error => {
-      // If fields endpoint fails, try legacy endpoint
-      if (error.response?.status === 404) {
-        console.log('Fields endpoint not found, trying legacy endpoint');
-        return axios.post(
-          `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
-          {
-            meta: updateData.meta,
-            status: 'draft'
-          },
-          { headers: getCommonHeaders(config) }
-        );
-      }
-      throw error;
-    });
+    );
 
     console.log('Post updated successfully');
   } catch (error) {

@@ -29,17 +29,14 @@ function setupAppraisalRoutes(app, config) {
       // Validate request parameters
       const validationError = validateAppraisalRequest(req);
       if (validationError) {
-        throw new Error(validationError);
+        return res.status(400).json({
+          success: false,
+          error: validationError
+        });
       }
 
       // Process the submission
-      const result = await processAppraisalSubmission(req, config);
-
-      res.json({
-        success: true,
-        post_id: result.postId,
-        post_url: result.postUrl
-      });
+      await processAppraisalSubmission(req, config, res);
 
     } catch (error) {
       console.error('Error processing appraisal submission:', error);
@@ -63,10 +60,13 @@ function setupAppraisalRoutes(app, config) {
         resolutionStatus: 'Open'
       });
 
-      res.status(400).json({
+      // Only send error response if one hasn't been sent yet
+      if (!res.headersSent) {
+        res.status(500).json({
         success: false,
         error: error.message
       });
+      }
     }
   });
 
