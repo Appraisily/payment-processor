@@ -21,6 +21,11 @@ async function initializeApp() {
     // Configure CORS for WebContainer origins
     const corsOptions = {
       origin: function (origin, callback) {
+        // Allow all origins in development
+        if (process.env.NODE_ENV !== 'production') {
+          return callback(null, true);
+        }
+        
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         
@@ -30,24 +35,22 @@ async function initializeApp() {
         }
         
         // Allow WebContainer origins
-        if (origin.includes('webcontainer-api.io')) {
-          return callback(null, true);
-        }
-        
-        // Allow local development
-        if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        if (origin.includes('webcontainer.io') || origin.includes('webcontainer-api.io')) {
           return callback(null, true);
         }
         
         callback(new Error('Not allowed by CORS'));
       },
       methods: ['GET', 'POST'],
-      allowedHeaders: ['Content-Type', 'x-shared-secret'],
+      allowedHeaders: ['Content-Type', 'x-shared-secret', 'authorization'],
       credentials: true
     };
     
     // Apply CORS middleware
     app.use(cors(corsOptions));
+
+    // Handle preflight requests
+    app.options('*', cors(corsOptions));
 
     // Setup webhook routes (must be before express.json() middleware)
     setupWebhookRoutes(app, config);
