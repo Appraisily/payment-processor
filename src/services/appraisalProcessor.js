@@ -83,7 +83,7 @@ async function processAppraisalSubmission(req, config, res) {
     try {
       if (wordpressPost) {
         const wordpressEditUrl = `${config.WORDPRESS_ADMIN_URL}/post.php?post=${wordpressPost.id}&action=edit`;
-        await updateAppraisalStatus(session_id, wordpressEditUrl, config);
+        await updateAppraisalStatus(session_id, wordpressEditUrl, description, config);
         console.log('Spreadsheet updated with status and WordPress URL');
       }
     } catch (error) {
