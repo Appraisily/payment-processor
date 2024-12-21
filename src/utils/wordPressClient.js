@@ -21,28 +21,29 @@ async function createInitialPost(postData, config) {
   try {
     console.log('Creating WordPress post with data:', JSON.stringify(postData, null, 2));
     
-    // Create post with minimal metadata first
+    // First create the basic post
     const response = await axios.post(
       `${config.WORDPRESS_API_URL}/appraisals`,
       {
         ...postData,
-        meta: {
-          _thumbnail_id: '',
-          processing_status: 'pending'
-        }
+        status: 'draft'
       },
       { headers: getCommonHeaders(config) }
     );
 
     console.log('WordPress post created successfully:', JSON.stringify(response.data, null, 2));
 
-    // Now update the post with ACF fields
-    await updatePostMetadata(response.data.id, {
+    // Then update ACF fields in a separate request
+    await updatePostAcfFields(response.data.id, {
+      processing_status: 'pending',
       session_id: postData.meta.session_id,
       customer_email: postData.meta.customer_email,
-      customer_name: postData.meta.customer_name,
-      customer_description: postData.meta.customer_description,
-      submission_date: postData.meta.submission_date
+      customer_name: postData.meta.customer_name || '',
+      customer_description: postData.meta.customer_description || '',
+      submission_date: postData.meta.submission_date,
+      main: '',
+      signature: '',
+      age: ''
     }, config);
 
     return {
@@ -103,28 +104,27 @@ async function uploadMedia(buffer, filename, config) {
   }
 }
 
-async function updatePostMetadata(postId, metadata, config) {
+async function updatePostAcfFields(postId, fields, config) {
   try {
-    console.log('Updating post metadata:', JSON.stringify(metadata, null, 2));
+    console.log('Updating post ACF fields:', JSON.stringify({ postId, fields }, null, 2));
 
     await axios.post(
-      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
+      `${config.WORDPRESS_API_URL}/appraisals/${postId}/fields`,
       {
-        acf: {
-          session_id: metadata.session_id,
-          customer_email: metadata.customer_email,
-          customer_name: metadata.customer_name || '',
-          customer_description: metadata.customer_description || '',
-          submission_date: metadata.submission_date
-        }
+        fields: fields
       },
       { headers: getCommonHeaders(config) }
     );
 
-    console.log('Post metadata updated successfully');
+    console.log('ACF fields updated successfully');
   } catch (error) {
-    console.error('Error updating post metadata:', error);
-    throw new Error('Failed to update post metadata');
+    console.error('Error updating ACF fields:', {
+      url: error.config?.url,
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    throw new Error('Failed to update ACF fields');
   }
 }
 
@@ -135,7 +135,7 @@ async function updatePostWithMedia(postId, updateData, config) {
     }, null, 2));
     
     await axios.post(
-      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
+      `${config.WORDPRESS_API_URL}/appraisals/${postId}/fields`,
       {
         fields: {
           main: updateData.meta.main || '',
@@ -143,11 +143,25 @@ async function updatePostWithMedia(postId, updateData, config) {
           age: updateData.meta.age || '',
           processing_status: updateData.meta.processing_status || '',
           error_message: updateData.meta.error_message || ''
-        },
-        status: 'draft'
+        }
       },
       { headers: getCommonHeaders(config) }
-    );
+    ).catch(error => {
+      // If fields endpoint fails, try legacy endpoint
+      if (error.response?.status === 404) {
+        console.log('Fields endpoint not found, trying legacy endpoint');
+        return axios.post(
+          `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
+          {
+            meta: updateData.meta,
+            status: 'draft'
+          },
+          { headers: getCommonHeaders(config) }
+        );
+      }
+      throw error;
+    });
+
     console.log('Post updated successfully');
   } catch (error) {
     console.error('Error updating post:', {
@@ -164,5 +178,5 @@ module.exports = {
   createInitialPost,
   uploadMedia,
   updatePostWithMedia,
-  updatePostMetadata
+  updatePostAcfFields
 };
