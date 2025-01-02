@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const AppraisalService = require('../domain/appraisal/service');
-const { logError } = require('../utils/error/logger');
+const { logError } = require('../utils/error/logger'); 
 
 function setupAppraisalRoutes(app, config) {
   const router = express.Router();
@@ -23,22 +23,25 @@ function setupAppraisalRoutes(app, config) {
   router.post('/', upload.fields(uploadFields), async (req, res) => {
     console.log('Received appraisal submission request');
 
+    const submission = {
+      session_id: req.body.session_id,
+      description: req.body.description,
+      files: req.files,
+      customer_email: req.body.email,
+      customer_name: req.body.name,
+      payment_id: req.body.payment_id
+    };
+
+    // Send immediate success response
+    res.status(200).json({
+      success: true,
+      message: 'Submission received and processing started'
+    });
+
+    // Process submission in background
     try {
-      const submission = {
-        session_id: req.body.session_id,
-        description: req.body.description,
-        files: req.files,
-        customer_email: req.body.email,
-        customer_name: req.body.name,
-        payment_id: req.body.payment_id
-      };
-
-      const result = await appraisalService.processSubmission(submission);
-
-      res.status(200).json({
-        success: true,
-        data: result
-      });
+      await appraisalService.processSubmission(submission);
+      console.log('Background processing completed successfully');
     } catch (error) {
       console.error('Error processing appraisal submission:', error);
       await logError(config, {
@@ -53,11 +56,6 @@ function setupAppraisalRoutes(app, config) {
           session_id: req.body.session_id,
           hasFiles: !!req.files
         })
-      });
-
-      res.status(500).json({
-        success: false,
-        error: error.message
       });
     }
   });

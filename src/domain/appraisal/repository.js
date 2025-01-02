@@ -1,19 +1,20 @@
 const { createPost, uploadMedia } = require('../../infrastructure/wordpress/client');
-const { backupFiles } = require('../../infrastructure/storage/gcs');
+const GCSClient = require('../../infrastructure/storage/gcs');
 const { optimizeImages } = require('../../infrastructure/image/processor');
 const { logError } = require('../../utils/error/logger');
 
 class AppraisalRepository {
   constructor(config) {
     this.config = config;
+    this.gcsClient = new GCSClient(config);
   }
 
   async createAppraisal(submission) {
     const { session_id, files, customer_email, customer_name } = submission;
 
     try {
-      // Start file backup early
-      const backupPromise = files ? backupFiles(files, this.config, {
+      // Start file backup early using GCS client
+      const backupPromise = files ? this.gcsClient.backupFiles(files, {
         session_id,
         customer_email,
         post_id: 'pending'
