@@ -44,8 +44,7 @@ async function createInitialPost(postData, config) {
     console.log('Creating WordPress post with data:', {
       title: postData.title,
       content: postData.content,
-      status: postData.status,
-      acf: postData.meta
+      status: postData.status
     });
 
     const endpoint = `${config.WORDPRESS_API_URL}/appraisals`;
@@ -55,8 +54,7 @@ async function createInitialPost(postData, config) {
       {
         title: postData.title,
         content: postData.content,
-        status: postData.status,
-        acf: postData.meta
+        status: postData.status
       },
       { headers: getCommonHeaders(config) }
     );
@@ -64,7 +62,9 @@ async function createInitialPost(postData, config) {
     console.log('WordPress post created successfully:', JSON.stringify(response.data, null, 2));
 
     // Update ACF fields with the metadata from postData
-    await updatePostAcfFields(response.data.id, postData.meta, config);
+    if (postData.meta) {
+      await updatePostAcfFields(response.data.id, postData.meta, config);
+    }
 
     return {
       id: response.data.id,
