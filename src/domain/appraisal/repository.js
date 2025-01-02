@@ -51,8 +51,13 @@ class AppraisalRepository {
       // Process images if any
       if (files) {
         const processedImages = await optimizeImages(files);
-        const uploadedMedia = await this.uploadAllMedia(processedImages);
-        await this.updatePostMedia(post.id, uploadedMedia);
+        uploadedMedia = await this.uploadAllMedia(processedImages);
+        await this.updatePostMedia(post.id, {
+          media: uploadedMedia,
+          customer_name,
+          customer_email,
+          session_id
+        });
 
         // Notify appraisers backend
         await this.appraisersClient.notifySubmission({
@@ -109,28 +114,20 @@ class AppraisalRepository {
     return uploadedMedia;
   }
 
-  async updatePostMedia(postId, media) {
+  async updatePostMedia(postId, data) {
     return await updatePost(postId, {
       meta: {
         // Media IDs
-        main: media.main?.id,
-        signature: media.signature?.id,
-        age: media.age?.id,
-        // Customer information from class properties
-        customer_name: this.customerName,
-        customer_email: this.customerEmail,
-        session_id: this.sessionId
+        main: data.media.main?.id || '',
+        signature: data.media.signature?.id || '',
+        age: data.media.age?.id || '',
+        // Customer information
+        customer_name: data.customer_name,
+        customer_email: data.customer_email,
+        session_id: data.session_id
       }
     }, this.config);
   }
-
-  async createAppraisal(submission) {
-    const { session_id, files, customer_email, customer_name } = submission;
-    
-    // Store customer info for use in updatePostMedia
-    this.customerName = customer_name;
-    this.customerEmail = customer_email;
-    this.sessionId = session_id;
 }
 
 module.exports = AppraisalRepository;
