@@ -1,4 +1,4 @@
-const { createPost, uploadMedia } = require('../../infrastructure/wordpress/client');
+const { createPost, uploadMedia, updatePost } = require('../../infrastructure/wordpress/client');
 const GCSClient = require('../../infrastructure/storage/gcs');
 const { optimizeImages } = require('../../infrastructure/image/processor');
 const { logError } = require('../../utils/error/logger');
@@ -11,6 +11,7 @@ class AppraisalRepository {
 
   async createAppraisal(submission) {
     const { session_id, files, customer_email, customer_name } = submission;
+    let uploadedMedia = {};
 
     try {
       // Start file backup early using GCS client

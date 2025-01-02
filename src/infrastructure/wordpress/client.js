@@ -36,7 +36,7 @@ async function createPost(postData, config) {
         content: postData.content,
         type: postData.type,
         status: postData.status,
-        acf: postData.meta
+        meta: postData.meta
       },
       { headers: getCommonHeaders(config) }
     );
