@@ -1,6 +1,17 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
+// IMPORTANT: The WORDPRESS_API_URL from config already includes '/wp-json/wp/v2'
+// Do NOT append 'wp/v2' to endpoints as it would result in duplicate paths!
+// Example config URL: 'https://example.com/wp-json/wp/v2'
+// Correct endpoint: '/appraisals'
+// Wrong endpoint: '/wp/v2/appraisals' (would result in /wp-json/wp/v2/wp/v2/appraisals)
+
+const ENDPOINTS = {
+  APPRAISALS: '/appraisals',
+  MEDIA: '/media'
+};
+
 async function getOutboundIP() {
   try {
     const response = await axios.get('https://api.ipify.org?format=json');
@@ -30,7 +41,7 @@ async function createPost(postData, config) {
     console.log('Starting WordPress post creation:', {
       outboundIP,
       title: postData.title,
-      url: `${config.WORDPRESS_API_URL}/wp/v2/appraisals`,
+      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`,
       meta: postData.meta,
       content_length: postData.content.length,
       status: postData.status
@@ -43,7 +54,7 @@ async function createPost(postData, config) {
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/wp/v2/appraisals`,
+      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`,
       {
         title: postData.title,
         content: postData.content,
@@ -72,7 +83,7 @@ async function createPost(postData, config) {
       error_message: error.message,
       status: error.response?.status,
       response_data: error.response?.data,
-      request_url: `${config.WORDPRESS_API_URL}/wp/v2/appraisals`,
+      request_url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`,
       headers: {
         ...getCommonHeaders(config),
         Authorization: '***' // Hide sensitive data
@@ -88,7 +99,7 @@ async function uploadMedia(buffer, filename, config) {
     console.log('Starting WordPress media upload:', {
       outboundIP,
       filename,
-      url: `${config.WORDPRESS_API_URL}/wp/v2/media`,
+      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.MEDIA}`,
       size: buffer.length,
       content_type: 'image/jpeg'
     });
@@ -102,14 +113,14 @@ async function uploadMedia(buffer, filename, config) {
     });
 
     console.log('Media upload request configuration:', {
-      endpoint: `${config.WORDPRESS_API_URL}/wp/v2/media`,
+      endpoint: `${config.WORDPRESS_API_URL}${ENDPOINTS.MEDIA}`,
       filename,
       content_length: buffer.length,
       form_headers: Object.keys(form.getHeaders())
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/wp/v2/media`,
+      `${config.WORDPRESS_API_URL}${ENDPOINTS.MEDIA}`,
       form,
       {
         headers: {
@@ -162,7 +173,7 @@ async function updatePost(postId, data, config) {
     console.log('Updating WordPress post:', {
       outboundIP,
       postId,
-      url: `${config.WORDPRESS_API_URL}/wp/v2/appraisals/${postId}`,
+      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
       fields: Object.keys(data.meta)
     });
     
@@ -181,7 +192,7 @@ async function updatePost(postId, data, config) {
     };
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/wp/v2/appraisals/${postId}`,
+      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
       acfData,
       { headers: getCommonHeaders(config) }
     );
@@ -199,7 +210,7 @@ async function updatePost(postId, data, config) {
       data: error.response?.data,
       message: error.message,
       postId,
-      url: `${config.WORDPRESS_API_URL}/wp/v2/appraisals/${postId}`
+      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`
     });
     throw new Error('Failed to update post');
   }

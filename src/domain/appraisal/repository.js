@@ -16,6 +16,7 @@ class AppraisalRepository {
   async createAppraisal(submission) {
     const { session_id, files, customer_email, customer_name } = submission;
     let uploadedMedia = {};
+    let post = null;
 
     try {
       // Start file backup early using GCS client
@@ -26,60 +27,124 @@ class AppraisalRepository {
       }) : Promise.resolve(null);
 
       // Create WordPress post
-      const post = await createPost({
-        title: `Art Appraisal Request - ${session_id}`,
-        content: ' ',
-        status: 'draft',
-        meta: {
+      try {
+        console.log('Attempting to create WordPress post:', {
+          session_id,
+          customer_email
+        });
+
+        post = await createPost({
+          title: `Art Appraisal Request - ${session_id}`,
+          content: ' ',
+          status: 'draft',
+          meta: {
+            session_id,
+            customer_email,
+            customer_name,
+            main: '',
+            signature: '',
+            age: ''
+          }
+        }, this.config);
+
+        console.log('WordPress post created successfully:', {
+          post_id: post.id,
+          edit_url: post.editUrl
+        });
+      } catch (wpError) {
+        console.error('WordPress post creation failed:', {
+          error: wpError.message,
+          session_id,
+          response_status: wpError.response?.status,
+          response_data: wpError.response?.data
+        });
+
+        await logError(this.config, {
+          severity: 'Error',
+          scriptName: 'AppraisalRepository',
+          errorCode: 'WORDPRESS_POST_CREATION_ERROR',
+          errorMessage: wpError.message,
+          stackTrace: wpError.stack,
+          additionalContext: JSON.stringify({
+            session_id,
+            response: wpError.response?.data
+          })
+        });
+
+        // Continue execution despite WordPress error
+        console.log('Continuing process despite WordPress error');
+      }
+
+      // Record in Google Sheets
+      try {
+        await this.sheetsClient.recordSubmission({
           session_id,
           customer_email,
           customer_name,
-          main: '',
-          signature: '',
-          age: ''
-        }
-      }, this.config);
-
-      // Record in Google Sheets
-      await this.sheetsClient.recordSubmission({
-        session_id,
-        customer_email,
-        customer_name,
-        wordpressEditUrl: post.editUrl
-      });
+          wordpressEditUrl: post?.editUrl || ''
+        });
+        console.log('Recorded submission in Google Sheets');
+      } catch (sheetsError) {
+        console.error('Failed to record in Google Sheets:', sheetsError);
+        // Continue execution despite sheets error
+      }
 
       // Process images if any
       if (files) {
         const processedImages = await optimizeImages(files);
         uploadedMedia = await this.uploadAllMedia(processedImages);
-        await this.updatePostMedia(post.id, {
-          media: uploadedMedia,
-          customer_name,
-          customer_email,
-          session_id
-        });
+
+        // Only update WordPress if post was created
+        if (post) {
+          try {
+            await this.updatePostMedia(post.id, {
+              media: uploadedMedia,
+              customer_name,
+              customer_email,
+              session_id
+            });
+            console.log('Updated WordPress post with media');
+          } catch (mediaError) {
+            console.error('Failed to update WordPress post with media:', mediaError);
+            // Continue execution despite media update error
+          }
+        }
 
         // Notify appraisers backend
-        await this.appraisersClient.notifySubmission({
-          session_id,
-          customer_email,
-          customer_name,
-          description: submission.description,
-          payment_id: submission.payment_id,
-          wordpress_url: post.editUrl,
-          images: uploadedMedia
-        });
+        try {
+          await this.appraisersClient.notifySubmission({
+            session_id,
+            customer_email,
+            customer_name,
+            description: submission.description,
+            payment_id: submission.payment_id,
+            wordpress_url: post?.editUrl || '',
+            images: uploadedMedia
+          });
+          console.log('Notified appraisers backend successfully');
+        } catch (backendError) {
+          console.error('Failed to notify appraisers backend:', backendError);
+          // Continue execution despite backend notification error
+        }
         
         // Update sheets status after media upload
-        await this.sheetsClient.updateSubmissionStatus(session_id, post.editUrl);
+        if (post) {
+          try {
+            await this.sheetsClient.updateSubmissionStatus(session_id, post.editUrl);
+            console.log('Updated submission status in sheets');
+          } catch (statusError) {
+            console.error('Failed to update submission status:', statusError);
+            // Continue execution despite status update error
+          }
+        }
       }
 
       // Wait for backup to complete
       const backupUrls = await backupPromise;
 
       return {
-        id: post.id,
-        editUrl: post.editUrl,
+        id: post?.id || null,
+        editUrl: post?.editUrl || null,
         media: uploadedMedia,
         backupUrls
       };
