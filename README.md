@@ -145,6 +145,7 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
      - Process and optimize images
      - Upload optimized images to WordPress media library
      - Update WordPress post with media IDs
+     - Update ACF fields, customer_name, customer_email and session_id 
      - Record submission in Google Sheets
      - Notify appraisers backend service
 

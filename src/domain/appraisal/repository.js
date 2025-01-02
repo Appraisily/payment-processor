@@ -2,11 +2,15 @@ const { createPost, uploadMedia, updatePost } = require('../../infrastructure/wo
 const GCSClient = require('../../infrastructure/storage/gcs');
 const { optimizeImages } = require('../../infrastructure/image/processor');
 const { logError } = require('../../utils/error/logger');
+const AppraisalSheetsClient = require('../../infrastructure/sheets/appraisals');
+const AppraisersBackendClient = require('../../infrastructure/appraisers/client');
 
 class AppraisalRepository {
   constructor(config) {
     this.config = config;
     this.gcsClient = new GCSClient(config);
+    this.sheetsClient = new AppraisalSheetsClient(config);
+    this.appraisersClient = new AppraisersBackendClient(config);
   }
 
   async createAppraisal(submission) {
@@ -36,11 +40,33 @@ class AppraisalRepository {
         }
       }, this.config);
 
+      // Record in Google Sheets
+      await this.sheetsClient.recordSubmission({
+        session_id,
+        customer_email,
+        customer_name,
+        wordpressEditUrl: post.editUrl
+      });
+
       // Process images if any
       if (files) {
         const processedImages = await optimizeImages(files);
         const uploadedMedia = await this.uploadAllMedia(processedImages);
         await this.updatePostMedia(post.id, uploadedMedia);
+
+        // Notify appraisers backend
+        await this.appraisersClient.notifySubmission({
+          session_id,
+          customer_email,
+          customer_name,
+          description: submission.description,
+          payment_id: submission.payment_id,
+          wordpress_url: post.editUrl,
+          images: uploadedMedia
+        });
+        
+        // Update sheets status after media upload
+        await this.sheetsClient.updateSubmissionStatus(session_id, post.editUrl);
       }
 
       // Wait for backup to complete
@@ -86,12 +112,25 @@ class AppraisalRepository {
   async updatePostMedia(postId, media) {
     return await updatePost(postId, {
       meta: {
-        main: media.main?.id || '',
-        signature: media.signature?.id || '',
-        age: media.age?.id || ''
+        // Media IDs
+        main: media.main?.id,
+        signature: media.signature?.id,
+        age: media.age?.id,
+        // Customer information from class properties
+        customer_name: this.customerName,
+        customer_email: this.customerEmail,
+        session_id: this.sessionId
       }
     }, this.config);
   }
+
+  async createAppraisal(submission) {
+    const { session_id, files, customer_email, customer_name } = submission;
+    
+    // Store customer info for use in updatePostMedia
+    this.customerName = customer_name;
+    this.customerEmail = customer_email;
+    this.sessionId = session_id;
 }
 
 module.exports = AppraisalRepository;

@@ -30,7 +30,7 @@ async function createPost(postData, config) {
     console.log('Cloud Run service outbound IP:', outboundIP);
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/appraisals`,
+      `${config.WORDPRESS_API_URL}/wp/v2/appraisals`,
       {
         title: postData.title,
         content: postData.content,
@@ -64,19 +64,26 @@ async function uploadMedia(buffer, filename, config) {
     const form = new FormData();
     form.append('file', buffer, {
       filename,
-      contentType: 'image/jpeg'
+      contentType: 'image/jpeg',
+      knownLength: buffer.length
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/media`,
+      `${config.WORDPRESS_API_URL}/wp/v2/media`,
       form,
       {
         headers: {
           ...form.getHeaders(),
-          Authorization: getAuthHeader(config)
+          Authorization: getAuthHeader(config),
+          'Content-Length': buffer.length
         }
       }
     );
+
+    console.log('Media uploaded successfully:', {
+      id: response.data.id,
+      url: response.data.source_url
+    });
 
     return {
       id: response.data.id,
@@ -92,12 +99,31 @@ async function updatePost(postId, data, config) {
   try {
     const outboundIP = await getOutboundIP();
     console.log('Cloud Run service outbound IP:', outboundIP);
+    
+    // Combine all ACF fields
+    const acfData = {
+      acf: {
+        // Media fields
+        main_image: data.meta.main || '',
+        signature_image: data.meta.signature || '',
+        age_image: data.meta.age || '',
+        // Customer fields
+        customer_name: data.meta.customer_name || '',
+        customer_email: data.meta.customer_email || '',
+        session_id: data.meta.session_id || ''
+      }
+    };
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
-      data,
+      `${config.WORDPRESS_API_URL}/wp/v2/appraisals/${postId}`,
+      acfData,
       { headers: getCommonHeaders(config) }
     );
+
+    console.log('Post updated successfully:', {
+      id: postId,
+      acf: acfData.acf
+    });
 
     return response.data;
   } catch (error) {
