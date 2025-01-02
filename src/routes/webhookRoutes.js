@@ -1,38 +1,63 @@
 const express = require('express');
-const { handleStripeWebhook } = require('../services/webhookHandler');
+const PaymentService = require('../domain/payment/service');
+const StripeClient = require('../infrastructure/stripe/client');
+const { logError } = require('../utils/error/logger');
 
 function setupWebhookRoutes(app, config) {
-  // Use express.raw() for webhook endpoints to preserve the raw body
+  const stripeClient = new StripeClient(config);
+  const paymentService = new PaymentService(config);
+
   const webhookMiddleware = express.raw({
     type: 'application/json',
     verify: (req, res, buf) => {
-      req.rawBody = buf; // Store raw buffer
+      req.rawBody = buf;
     }
   });
 
-  // Live webhook endpoint
-  app.post('/stripe-webhook', webhookMiddleware, async (req, res) => {
-    const webhookSecret = config.STRIPE_WEBHOOK_SECRET_LIVE;
-    console.log('Using Live webhook endpoint');
-    if (!webhookSecret) {
-      console.error('Live webhook secret not found in config');
-      return res.status(500).send('Webhook secret not configured');
+  async function handleWebhook(req, res, mode) {
+    const sig = req.headers['stripe-signature'];
+    if (!sig) {
+      return res.status(400).send('No signature header');
     }
-    await handleStripeWebhook(req, res, config, 'live');
+
+    try {
+      const event = await stripeClient.verifyWebhookSignature(
+        req.rawBody,
+        sig,
+        mode
+      );
+
+      if (event.type === 'checkout.session.completed') {
+        await paymentService.processCheckoutSession(event.data.object, mode);
+        res.status(200).send('Webhook processed successfully');
+      } else {
+        console.log(`Ignoring event type ${event.type}`);
+        res.status(200).send('Ignored event type');
+      }
+    } catch (error) {
+      console.error('Error processing webhook:', error);
+      await logError(config, {
+        severity: 'Error',
+        scriptName: 'webhookRoutes',
+        errorCode: error.code || 'UnknownError',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        environment: mode,
+        endpoint: req.originalUrl,
+        additionalContext: JSON.stringify({ 
+          signature: sig,
+          mode
+        })
+      });
+      res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+  }
+
+  app.post('/stripe-webhook', webhookMiddleware, (req, res) => {
+    handleWebhook(req, res, 'live');
   });
 
-  // Test webhook endpoint
-  app.post('/stripe-webhook-test', webhookMiddleware, async (req, res) => {
-    const webhookSecret = config.STRIPE_WEBHOOK_SECRET_TEST;
-    console.log('Using Test webhook endpoint');
-    if (!webhookSecret) {
-      console.error('Test webhook secret not found in config');
-      return res.status(500).send('Webhook secret not configured');
-    }
-    await handleStripeWebhook(req, res, config, 'test');
+  app.post('/stripe-webhook-test', webhookMiddleware, (req, res) => {
+    handleWebhook(req, res, 'test');
   });
 }
-
-module.exports = {
-  setupWebhookRoutes
-};

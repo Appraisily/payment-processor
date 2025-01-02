@@ -3,6 +3,7 @@ const { createInitialPost, updatePostWithMedia } = require('../utils/wordPressCl
 const { processImagesAndUpdate } = require('./backgroundProcessor');
 const { updateAppraisalStatus } = require('../utils/spreadsheetClient');
 const { logError } = require('../utils/errorLogger');
+const { backupFiles } = require('../utils/storageClient');
 
 async function processAppraisalSubmission(req, config, res) {
   const {
@@ -69,6 +70,9 @@ async function processAppraisalSubmission(req, config, res) {
       });
       throw new Error('Invalid session ID');
     }
+  } catch (error) {
+    throw error; // Re-throw to be caught by outer try-catch
+  }
 
     // Get customer details, fallback to safe defaults
     const customer_email = stripeSession?.customer_details?.email || req.body.email || 'unknown@email';
@@ -116,7 +120,8 @@ async function processAppraisalSubmission(req, config, res) {
         stackTrace: error.stack,
         additionalContext: JSON.stringify({ session_id, customer_email })
       });
-      throw error; // Propagate error to ensure proper handling
+      // Continue with other operations instead of throwing
+      console.log('Continuing despite WordPress error');
     }
 
     // Step 3: Process Images
