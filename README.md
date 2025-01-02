@@ -135,7 +135,21 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 - POST `/api/appraisals`: Handle appraisal submissions
   - Multipart form data
   - Supports image uploads (main, signature, age)
-  - Maximum file size: 10MB
+  - Maximum file size: 10MB per file
+  
+  Processing Steps:
+  1. Immediate 200 response sent to client
+  2. Background processing begins:
+     - Backup submitted files to Google Cloud Storage
+     - Create WordPress post with appraisal details
+     - Process and optimize images
+     - Upload optimized images to WordPress media library
+     - Update WordPress post with media IDs
+     - Record submission in Google Sheets
+     - Notify appraisers backend service
+
+  Each step is logged for monitoring and debugging purposes.
+  If any step fails, the error is logged but doesn't affect the client response.
 
 ## Configuration
 

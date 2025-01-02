@@ -94,7 +94,7 @@ async function updatePost(postId, data, config) {
     console.log('Cloud Run service outbound IP:', outboundIP);
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/posts/${postId}`,
+      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
       data,
       { headers: getCommonHeaders(config) }
     );

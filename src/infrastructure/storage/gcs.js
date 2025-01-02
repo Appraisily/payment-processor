@@ -38,12 +38,17 @@ class GCSClient {
   }
 
   async backupFiles(files, metadata = {}) {
+    console.log('Starting GCS backup for files:', {
+      session_id: metadata.session_id,
+      fileTypes: Object.keys(files)
+    });
     const results = {};
     const timestamp = Date.now();
 
     for (const [key, fileArray] of Object.entries(files)) {
       if (fileArray && fileArray[0]) {
         try {
+          console.log(`Backing up ${key} file to GCS`);
           const filename = `${metadata.session_id}/${key}-${timestamp}.jpg`;
           results[key] = await this.uploadFile(
             fileArray[0].buffer,
@@ -53,6 +58,7 @@ class GCSClient {
               fileType: key
             }
           );
+          console.log(`Successfully backed up ${key} file to GCS:`, results[key]);
         } catch (error) {
           console.error(`Failed to backup ${key}:`, error);
           results[key] = null;
@@ -71,6 +77,10 @@ class GCSClient {
       }
     }
 
+    console.log('GCS backup completed:', {
+      session_id: metadata.session_id,
+      backedUpFiles: Object.keys(results)
+    });
     return results;
   }
 }
