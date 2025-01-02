@@ -30,23 +30,28 @@ async function createPost(postData, config) {
     console.log('Cloud Run service outbound IP:', outboundIP);
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/posts`,
+      `${config.WORDPRESS_API_URL}/appraisals`,
       {
         title: postData.title,
         content: postData.content,
-        type: postData.type,
         status: postData.status,
         meta: postData.meta
       },
       { headers: getCommonHeaders(config) }
     );
+    
+    console.log('WordPress post created successfully:', response.data.id);
 
     return {
       id: response.data.id,
       editUrl: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${response.data.id}&action=edit`
     };
   } catch (error) {
-    console.error('Error creating WordPress post:', error);
+    console.error('Error creating WordPress post:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
     throw new Error('Failed to create WordPress post');
   }
 }

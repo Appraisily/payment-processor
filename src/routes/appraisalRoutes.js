@@ -23,6 +23,14 @@ function setupAppraisalRoutes(app, config) {
   router.post('/', upload.fields(uploadFields), async (req, res) => {
     console.log('Received appraisal submission request');
 
+    // Log request details
+    console.log('Request details:', {
+      session_id: req.body.session_id,
+      email: req.body.email,
+      hasFiles: !!req.files,
+      fileTypes: req.files ? Object.keys(req.files) : []
+    });
+
     const submission = {
       session_id: req.body.session_id,
       description: req.body.description,
@@ -35,16 +43,19 @@ function setupAppraisalRoutes(app, config) {
     // Send immediate success response
     res.status(200).json({
       success: true,
-      message: 'Submission received and processing started'
+      message: 'Submission received and processing started',
+      session_id: submission.session_id
     });
 
     // Process submission in background
     try {
+      console.log('Starting background processing for session:', submission.session_id);
       await appraisalService.processSubmission(submission);
       console.log('Background processing completed successfully');
     } catch (error) {
       console.error('Error processing appraisal submission:', error);
       await logError(config, {
+        timestamp: new Date().toISOString(),
         severity: 'Error',
         scriptName: 'appraisalRoutes',
         errorCode: error.code || 'APPRAISAL_SUBMISSION_ERROR',
@@ -54,7 +65,11 @@ function setupAppraisalRoutes(app, config) {
         endpoint: '/api/appraisals',
         additionalContext: JSON.stringify({
           session_id: req.body.session_id,
-          hasFiles: !!req.files
+          hasFiles: !!req.files,
+          fileTypes: req.files ? Object.keys(req.files) : [],
+          error: error.response?.data || error.message,
+          status: error.response?.status,
+          stack: error.stack
         })
       });
     }

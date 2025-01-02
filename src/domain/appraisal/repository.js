@@ -25,7 +25,6 @@ class AppraisalRepository {
       const post = await createPost({
         title: `Art Appraisal Request - ${session_id}`,
         content: ' ',
-        type: 'appraisals',
         status: 'draft',
         meta: {
           session_id,
@@ -56,12 +55,17 @@ class AppraisalRepository {
 
     } catch (error) {
       await logError(this.config, {
+        timestamp: new Date().toISOString(),
         severity: 'Error',
         scriptName: 'AppraisalRepository',
         errorCode: 'APPRAISAL_CREATION_ERROR',
         errorMessage: error.message,
         stackTrace: error.stack,
-        additionalContext: JSON.stringify({ session_id })
+        additionalContext: JSON.stringify({ 
+          session_id,
+          hasFiles: !!files,
+          error: error.response?.data || error.message
+        })
       });
       throw error;
     }

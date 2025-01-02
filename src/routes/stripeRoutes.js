@@ -36,6 +36,12 @@ function setupStripeRoutes(app, config) {
     try {
       const session = await stripeClient.retrieveSession(sessionId, 'live');
       
+      console.log('Retrieved Stripe session:', {
+        id: session.id,
+        email: session.customer_details?.email,
+        status: session.payment_status
+      });
+      
       res.json({
         customer_details: {
           name: session.customer_details?.name,
@@ -47,6 +53,7 @@ function setupStripeRoutes(app, config) {
       });
     } catch (error) {
       await logError(config, {
+        timestamp: new Date().toISOString(),
         severity: 'Error',
         scriptName: 'stripeRoutes',
         errorCode: error.code || 'UnknownError',
@@ -55,6 +62,7 @@ function setupStripeRoutes(app, config) {
         endpoint: req.originalUrl,
         additionalContext: JSON.stringify({ 
           sessionId,
+          headers: req.headers,
           stripeError: error.raw 
         })
       });
