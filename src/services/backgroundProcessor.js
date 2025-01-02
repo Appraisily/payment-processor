@@ -118,6 +118,7 @@ async function processImagesAndUpdate({ files, postId, config, backupPromise, me
       }
     }, config).catch(console.error);
   }
+}
 
 async function processImages(files) {
   console.log('Processing images:', Object.keys(files));
@@ -141,7 +142,6 @@ async function uploadToWordPress(images, config) {
     console.log(`${key} image uploaded successfully:`, uploadedMedia[key].id);
   }
   return uploadedMedia;
-}
 }
 
 module.exports = {
