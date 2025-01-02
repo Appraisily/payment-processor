@@ -16,11 +16,22 @@ async function processAppraisalSubmission(req, config, res) {
   try {
     // Step 1: Validate Stripe Session
     try {
+      // Get session data directly from Stripe
       const stripe = stripeModule(config.STRIPE_SECRET_KEY_LIVE);
       stripeSession = await stripe.checkout.sessions.retrieve(session_id, {
         expand: ['customer_details']
       });
-      console.log('Stripe session validated');
+      
+      if (!stripeSession) {
+        throw new Error('Session not found');
+      }
+      
+      console.log('Stripe session retrieved:', {
+        id: stripeSession.id,
+        customer: stripeSession.customer,
+        email: stripeSession.customer_details?.email
+      });
+
     } catch (error) {
       console.error('Stripe session validation failed:', error);
       await logError(config, {
@@ -48,13 +59,14 @@ async function processAppraisalSubmission(req, config, res) {
     try {
       const postData = {
         title: `Art Appraisal Request - ${session_id}`,
-        content: '',
+        content: ' ',  // Empty space to avoid WordPress default content
         type: 'appraisals',
         status: 'draft',
         meta: {
           session_id,
           customer_email: customer_email,
           customer_name: customer_name,
+          processing_status: 'pending',
           main: '',
           signature: '',
           age: ''

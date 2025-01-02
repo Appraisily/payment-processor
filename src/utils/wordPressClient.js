@@ -2,11 +2,13 @@ const axios = require('axios');
 const FormData = require('form-data');
 
 async function updatePost(postId, data, config) {
+  console.log('Updating post with data:', JSON.stringify(data, null, 2));
   const response = await axios.post(
     `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
     data,
     { headers: getCommonHeaders(config) }
   );
+  console.log('Post update response:', JSON.stringify(response.data, null, 2));
   return response.data;
 }
 
@@ -103,13 +105,18 @@ async function uploadMedia(buffer, filename, config) {
 async function updatePostAcfFields(postId, fields, config) {
   try {
     console.log('Updating post ACF fields:', JSON.stringify({ postId, fields }, null, 2));
-    
-    // Ensure post exists before updating fields
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Update ACF fields
     const response = await updatePost(postId, {
-      fields
+      acf: {
+        session_id: fields.session_id,
+        customer_email: fields.customer_email,
+        customer_name: fields.customer_name,
+        processing_status: fields.processing_status || 'pending',
+        main: fields.main || '',
+        signature: fields.signature || '',
+        age: fields.age || ''
+      }
     }, config);
 
     if (!response || !response.id) {
@@ -132,13 +139,14 @@ async function updatePostAcfFields(postId, fields, config) {
 async function updatePostWithMedia(postId, updateData, config) {
   try {
     console.log('Updating post with media:', JSON.stringify({ postId, updateData }, null, 2));
-
-    // Update all fields in a single request
-    await updatePost(postId, {
-      fields: updateData.meta || {}
+    const response = await updatePost(postId, {
+      acf: updateData.meta || {}
     }, config);
-
+    if (!response || !response.id) {
+      throw new Error('Failed to update post with media - invalid response');
+    }
     console.log('Post updated successfully');
+    return response;
   } catch (error) {
     console.error('Error updating post:', {
       url: error.config?.url,
