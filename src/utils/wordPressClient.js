@@ -2,13 +2,30 @@ const axios = require('axios');
 const FormData = require('form-data');
 
 async function updatePost(postId, data, config) {
-  console.log('Updating post with data:', JSON.stringify(data, null, 2));
+  const endpoint = `${config.WORDPRESS_API_URL}/appraisals/${postId}`;
+  console.log('WordPress API Request:', {
+    endpoint,
+    method: 'POST',
+    headers: {
+      ...getCommonHeaders(config),
+      Authorization: '[REDACTED]'
+    },
+    data: JSON.stringify(data, null, 2)
+  });
+
   const response = await axios.post(
-    `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
+    endpoint,
     data,
     { headers: getCommonHeaders(config) }
   );
-  console.log('Post update response:', JSON.stringify(response.data, null, 2));
+
+  console.log('WordPress API Response:', {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+    data: JSON.stringify(response.data, null, 2)
+  });
+
   return response.data;
 }
 
@@ -27,11 +44,15 @@ function getCommonHeaders(config) {
 
 async function createInitialPost(postData, config) {
   try {
-    console.log('Creating WordPress post with data:', JSON.stringify(postData, null, 2));
+    const endpoint = `${config.WORDPRESS_API_URL}/appraisals`;
+    console.log('WordPress Create Post Request:', {
+      endpoint,
+      method: 'POST',
+      data: JSON.stringify(postData, null, 2)
+    });
 
-    // Create the post and wait for completion
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}/appraisals`,
+      endpoint,
       {
         ...postData,
         status: 'draft'
@@ -104,14 +125,16 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePostAcfFields(postId, fields, config) {
   try {
-    console.log('Updating post ACF fields:', JSON.stringify({ postId, fields }, null, 2));
+    console.log('WordPress Update ACF Fields Request:', {
+      postId,
+      fields: JSON.stringify(fields, null, 2)
+    });
 
-    // Update ACF fields
     const response = await updatePost(postId, {
-      acf: {
-        session_id: fields.session_id,
-        customer_email: fields.customer_email,
-        customer_name: fields.customer_name,
+      meta: {
+        session_id: fields.session_id || '',
+        customer_email: fields.customer_email || '',
+        customer_name: fields.customer_name || '',
         processing_status: fields.processing_status || 'pending',
         main: fields.main || '',
         signature: fields.signature || '',
@@ -123,14 +146,19 @@ async function updatePostAcfFields(postId, fields, config) {
       throw new Error('Failed to update ACF fields - invalid response');
     }
 
-    console.log('ACF fields updated successfully');
+    console.log('WordPress ACF Fields Update Response:', {
+      id: response.id,
+      status: 'success'
+    });
+
     return response;
   } catch (error) {
     console.error('Error updating ACF fields:', {
       url: error.config?.url,
       message: error.message,
-      response: error.response?.data,
-      status: error.response?.status
+      response: JSON.stringify(error.response?.data, null, 2),
+      status: error.response?.status,
+      headers: error.response?.headers
     });
     throw new Error('Failed to update ACF fields');
   }
@@ -140,7 +168,7 @@ async function updatePostWithMedia(postId, updateData, config) {
   try {
     console.log('Updating post with media:', JSON.stringify({ postId, updateData }, null, 2));
     const response = await updatePost(postId, {
-      acf: updateData.meta || {}
+      meta: updateData.meta || {}
     }, config);
     if (!response || !response.id) {
       throw new Error('Failed to update post with media - invalid response');
