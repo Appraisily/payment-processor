@@ -1,6 +1,6 @@
 const { google } = require('googleapis');
 
-async function updateAppraisalStatus(sessionId, wordpressUrl, config) {
+async function updateAppraisalStatus(sessionId, wordpressUrl, description, config) {
   try {
     // Initialize Google Sheets API
     const auth = new google.auth.GoogleAuth({
@@ -25,14 +25,14 @@ async function updateAppraisalStatus(sessionId, wordpressUrl, config) {
     // Update both status and WordPress URL
     await sheets.spreadsheets.values.update({
       spreadsheetId: config.PENDING_APPRAISALS_SPREADSHEET_ID,
-      range: `${config.PENDING_APPRAISALS_SHEET_NAME}!F${rowIndex + 1}:I${rowIndex + 1}`,
+      range: `${config.PENDING_APPRAISALS_SHEET_NAME}!F${rowIndex + 1}:G${rowIndex + 1}`,
       valueInputOption: 'RAW',
       resource: {
-        values: [['INFORMATION RECEIVED', wordpressUrl, description || '']]
+        values: [['INFORMATION RECEIVED', wordpressUrl]]
       }
     });
 
-    console.log(`Updated status, WordPress URL and description for session ${sessionId}`);
+    console.log(`Updated status and WordPress URL for session ${sessionId}`);
   } catch (error) {
     console.error('Error updating appraisal status in spreadsheet:', error);
     throw error;
