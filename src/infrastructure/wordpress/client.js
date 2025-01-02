@@ -1,11 +1,11 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-// IMPORTANT: The WORDPRESS_API_URL from config already includes '/wp-json/wp/v2'
-// Do NOT append 'wp/v2' to endpoints as it would result in duplicate paths!
-// Example config URL: 'https://example.com/wp-json/wp/v2'
-// Correct endpoint: '/appraisals'
-// Wrong endpoint: '/wp/v2/appraisals' (would result in /wp-json/wp/v2/wp/v2/appraisals)
+// IMPORTANT NOTE: WordPress API URL handling
+// The WORDPRESS_API_URL from config includes '/wp-json/wp/v2'
+// ✓ Correct: config.WORDPRESS_API_URL + '/appraisals'
+// ✗ Wrong: config.WORDPRESS_API_URL + '/wp/v2/appraisals'
+// This prevents the common error of duplicate 'wp/v2' in the path
 
 const ENDPOINTS = {
   APPRAISALS: '/appraisals',
@@ -38,10 +38,12 @@ function getCommonHeaders(config) {
 async function createPost(postData, config) {
   try {
     const outboundIP = await getOutboundIP();
+    const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`;
+    
     console.log('Starting WordPress post creation:', {
       outboundIP,
       title: postData.title,
-      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`,
+      url: endpoint,
       meta: postData.meta,
       content_length: postData.content.length,
       status: postData.status
@@ -54,7 +56,7 @@ async function createPost(postData, config) {
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`,
+      endpoint,
       {
         title: postData.title,
         content: postData.content,
@@ -63,6 +65,13 @@ async function createPost(postData, config) {
       },
       { headers: getCommonHeaders(config) }
     );
+    
+    // Validate response data
+    if (!response.data || !response.data.id) {
+      throw new Error('Invalid response from WordPress: Missing post ID');
+    }
+
+    const postId = response.data.id;
     
     console.log('WordPress post created successfully:', {
       post_id: response.data.id,
@@ -74,8 +83,8 @@ async function createPost(postData, config) {
     });
 
     return {
-      id: response.data.id,
-      editUrl: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${response.data.id}&action=edit`
+      id: postId,
+      editUrl: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${postId}&action=edit`
     };
   } catch (error) {
     console.error('Error creating WordPress post:', {
@@ -83,12 +92,21 @@ async function createPost(postData, config) {
       error_message: error.message,
       status: error.response?.status,
       response_data: error.response?.data,
-      request_url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`,
+      request_url: error.config?.url,
       headers: {
         ...getCommonHeaders(config),
         Authorization: '***' // Hide sensitive data
       }
     });
+
+    // Throw specific error messages based on response
+    if (error.response?.status === 404) {
+      throw new Error('WordPress API endpoint not found. Check API URL configuration.');
+    } else if (error.response?.status === 401) {
+      throw new Error('WordPress authentication failed. Check credentials.');
+    } else {
+      throw new Error(`Failed to create WordPress post: ${error.message}`);
+    }
     throw new Error('Failed to create WordPress post');
   }
 }

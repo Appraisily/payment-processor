@@ -26,7 +26,7 @@ function setupAppraisalRoutes(app, config) {
     // Log request details
     console.log('Request details:', {
       session_id: req.body.session_id,
-      email: req.body.email,
+      customer_email: req.body.customer_email,
       hasFiles: !!req.files,
       fileTypes: req.files ? Object.keys(req.files) : []
     });
@@ -35,8 +35,8 @@ function setupAppraisalRoutes(app, config) {
       session_id: req.body.session_id,
       description: req.body.description,
       files: req.files,
-      customer_email: req.body.email,
-      customer_name: req.body.name,
+      customer_email: req.body.customer_email,
+      customer_name: req.body.customer_name,
       payment_id: req.body.payment_id
     };
 
@@ -61,7 +61,7 @@ function setupAppraisalRoutes(app, config) {
         errorCode: error.code || 'APPRAISAL_SUBMISSION_ERROR',
         errorMessage: error.message,
         stackTrace: error.stack,
-        userId: req.body.email,
+        userId: req.body.customer_email,
         endpoint: '/api/appraisals',
         additionalContext: JSON.stringify({
           session_id: req.body.session_id,
