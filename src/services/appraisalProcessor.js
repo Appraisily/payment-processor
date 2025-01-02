@@ -13,12 +13,6 @@ async function processAppraisalSubmission(req, config, res) {
   let stripeSession;
   let wordpressPost;
 
-  // Send immediate 200 response
-  res.status(200).json({
-    success: true,
-    message: 'Processing started'
-  });
-
   try {
     // Step 1: Validate Stripe Session
     try {
@@ -37,35 +31,42 @@ async function processAppraisalSubmission(req, config, res) {
         stackTrace: error.stack,
         additionalContext: JSON.stringify({ session_id })
       });
-      return; // Continue with next step using default values
+      throw new Error('Invalid session ID');
     }
 
     // Get customer details, fallback to safe defaults
     const customer_email = stripeSession?.customer_details?.email || req.body.email || 'unknown@email';
     const customer_name = stripeSession?.customer_details?.name || req.body.name || 'Unknown Customer';
 
+    // Send 200 response after validation but before processing
+    res.status(200).json({
+      success: true,
+      message: 'Processing started'
+    });
+
     // Step 2: Create WordPress Post
     try {
       const postData = {
-        title: `Appraisal Request - ${session_id}`,
-        content: '',
+        title: `Art Appraisal Request - ${session_id}`,
+        content: description || 'No description provided',
         type: 'appraisals',
         status: 'draft',
         meta: {
           session_id,
-          customer_email,
-          customer_name,
-          customer_description: description || '',
-          submission_date: new Date().toISOString(),
-          processing_status: 'pending',
-          main: '',
-          signature: '',
-          age: ''
+          customer_email: customer_email,
+          customer_name: customer_name
         }
       };
 
       wordpressPost = await createInitialPost(postData, config);
       console.log('WordPress post created:', wordpressPost.id);
+
+      // Update spreadsheet with WordPress URL immediately after post creation
+      if (wordpressPost) {
+        const wordpressEditUrl = `${config.WORDPRESS_ADMIN_URL}/post.php?post=${wordpressPost.id}&action=edit`;
+        await updateAppraisalStatus(session_id, wordpressEditUrl, description, config);
+        console.log('Spreadsheet updated with WordPress URL');
+      }
     } catch (error) {
       console.error('WordPress post creation failed:', error);
       await logError(config, {
@@ -76,33 +77,10 @@ async function processAppraisalSubmission(req, config, res) {
         stackTrace: error.stack,
         additionalContext: JSON.stringify({ session_id, customer_email })
       });
-      // Continue with spreadsheet update even if WordPress fails
+      throw error; // Propagate error to ensure proper handling
     }
 
-    // Step 3: Update Spreadsheet
-    try {
-      if (wordpressPost) {
-        const wordpressEditUrl = `${config.WORDPRESS_ADMIN_URL}/post.php?post=${wordpressPost.id}&action=edit`;
-        await updateAppraisalStatus(session_id, wordpressEditUrl, description, config);
-        console.log('Spreadsheet updated with status and WordPress URL');
-      }
-    } catch (error) {
-      console.error('Spreadsheet update failed:', error);
-      await logError(config, {
-        severity: 'Error',
-        scriptName: 'appraisalProcessor',
-        errorCode: 'SPREADSHEET_UPDATE_ERROR',
-        errorMessage: error.message,
-        stackTrace: error.stack,
-        additionalContext: JSON.stringify({ 
-          session_id,
-          wordpress_post_id: wordpressPost?.id 
-        })
-      });
-      // Continue with image processing even if spreadsheet update fails
-    }
-
-    // Step 4: Process Images
+    // Step 3: Process Images
     if (wordpressPost && req.files) {
       processImagesAndUpdate({
         files: req.files,

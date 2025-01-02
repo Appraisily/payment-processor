@@ -26,11 +26,10 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
 
     // Update post with media
     await updatePostWithMedia(postId, {
-      meta: {
-        processing_status: 'completed',
-        main: uploadedMedia.main?.id || '',         // ACF field for main image
-        signature: uploadedMedia.signature?.id || '', // ACF field for signature image
-        age: uploadedMedia.age?.id || ''            // ACF field for age image
+      fields: {
+        main: uploadedMedia.main?.id || '',
+        signature: uploadedMedia.signature?.id || '',
+        age: uploadedMedia.age?.id || ''
       }
     }, config);
 
@@ -38,7 +37,11 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
     const backupUrls = await backupPromise;
     console.log('GCS backup completed:', backupUrls);
 
-    console.log('Post updated with media IDs');
+    console.log('Post updated with ACF image fields:', {
+      main: uploadedMedia.main?.id,
+      signature: uploadedMedia.signature?.id,
+      age: uploadedMedia.age?.id
+    });
     // Send notification email
     await sendAppraisalNotification({
       config,
