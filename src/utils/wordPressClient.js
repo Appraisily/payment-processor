@@ -1,13 +1,33 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
+async function inspectEndpoint(config) {
+  try {
+    console.log('Inspecting WordPress API endpoint...');
+    const response = await axios.options(
+      `${config.WORDPRESS_API_URL}/appraisals`,
+      { headers: getCommonHeaders(config) }
+    );
+    console.log('API Schema:', {
+      routes: response.data?.routes,
+      schema: response.data?.schema,
+      endpoints: response.data?.endpoints
+    });
+  } catch (error) {
+    console.error('Error inspecting endpoint:', {
+      message: error.message,
+      response: error.response?.data
+    });
+  }
+}
+
 async function updatePost(postId, data, config) {
   const endpoint = `${config.WORDPRESS_API_URL}/appraisals/${postId}`;
-  console.log('WordPress API Request to update post:', {
+  console.log('WordPress API Request:', {
     endpoint,
     method: 'POST',
-    acf_fields: data.acf ? Object.keys(data.acf) : [],
-    acf_values: data.acf
+    headers: getCommonHeaders(config),
+    data: JSON.stringify(data, null, 2)
   });
 
   const response = await axios.post(
@@ -41,20 +61,32 @@ function getCommonHeaders(config) {
 
 async function createInitialPost(postData, config) {
   try {
-    console.log('Creating WordPress post with data:', {
+    // First inspect the endpoint
+    await inspectEndpoint(config);
+
+    console.log('Creating WordPress post:', {
       title: postData.title,
       content: postData.content,
-      status: postData.status
+      status: postData.status,
+      meta: postData.meta // Log meta to see what we're trying to set
     });
 
     const endpoint = `${config.WORDPRESS_API_URL}/appraisals`;
+
+    // Try to get current post type schema
+    const schemaResponse = await axios.get(
+      `${config.WORDPRESS_API_URL}/appraisals/schema`,
+      { headers: getCommonHeaders(config) }
+    );
+    console.log('Post type schema:', schemaResponse.data);
 
     const response = await axios.post(
       endpoint,
       {
         title: postData.title,
         content: postData.content,
-        status: postData.status
+        status: postData.status,
+        meta: postData.meta // Try setting meta directly first
       },
       { headers: getCommonHeaders(config) }
     );
@@ -126,25 +158,39 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePostAcfFields(postId, fields, config) {
   try {
-    console.log('Updating ACF fields:', {
+    console.log('Attempting to update ACF fields:', {
       postId,
-      acf: fields
+      fields: JSON.stringify(fields, null, 2)
     });
 
-    const response = await updatePost(postId, {
-      acf: fields,
+    // First try to get current ACF fields
+    const currentFields = await axios.get(
+      `${config.WORDPRESS_API_URL}/appraisals/${postId}`,
+      { headers: getCommonHeaders(config) }
+    );
+    console.log('Current ACF fields:', currentFields.data.acf);
+
+    // Try updating with both acf and meta
+    const updateData = {
+      acf: fields,        // Try ACF format
+      meta: fields,       // Try meta format
       status: 'publish'
-    }, config);
+    };
+
+    console.log('Sending update with data:', JSON.stringify(updateData, null, 2));
+    const response = await updatePost(postId, updateData, config);
     
-    console.log('ACF fields updated successfully');
+    console.log('Update response:', {
+      acf: response.acf,
+      meta: response.meta
+    });
 
     return response;
   } catch (error) {
     console.error('Error updating ACF fields:', {
       message: error.message,
       response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers
+      status: error.response?.status
     });
     throw new Error('Failed to update ACF fields');
   }
