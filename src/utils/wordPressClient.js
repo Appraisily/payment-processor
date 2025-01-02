@@ -1,8 +1,25 @@
 const axios = require('axios');
 const FormData = require('form-data');
+const dns = require('dns').promises;
+
+async function getOutboundIP() {
+  try {
+    // Make a request to a service that returns the IP
+    const response = await axios.get('https://api.ipify.org?format=json');
+    return response.data.ip;
+  } catch (error) {
+    console.error('Error getting outbound IP:', error);
+    return 'Unknown';
+  }
+}
 
 async function updatePost(postId, data, config) {
-  const endpoint = `${config.WORDPRESS_API_URL}/appraisals/${postId}`;
+  const endpoint = `${config.WORDPRESS_API_URL}/posts/${postId}`;
+  
+  // Get the outbound IP before making the WordPress request
+  const outboundIP = await getOutboundIP();
+  console.log('Cloud Run service outbound IP:', outboundIP);
+  
   console.log('Updating post:', postId, 'with data:', JSON.stringify(data, null, 2));
 
   const response = await axios.post(
@@ -29,12 +46,17 @@ function getCommonHeaders(config) {
 
 async function createInitialPost(postData, config) {
   try {
-    const endpoint = `${config.WORDPRESS_API_URL}/appraisals`;
+    const endpoint = `${config.WORDPRESS_API_URL}/posts`;
+    
+    // Get the outbound IP before making the WordPress request
+    const outboundIP = await getOutboundIP();
+    console.log('Cloud Run service outbound IP:', outboundIP);
 
     // Create post with all fields including ACF
     const data = {
       title: postData.title,
       content: postData.content,
+      type: 'appraisals',
       status: postData.status,
       acf: postData.meta // Put meta fields in acf object
     };
@@ -65,6 +87,10 @@ async function createInitialPost(postData, config) {
 
 async function uploadMedia(buffer, filename, config) {
   try {
+    // Get the outbound IP before making the WordPress request
+    const outboundIP = await getOutboundIP();
+    console.log('Cloud Run service outbound IP:', outboundIP);
+    
     const form = new FormData();
     form.append('file', buffer, {
       filename,

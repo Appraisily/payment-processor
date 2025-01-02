@@ -5,16 +5,16 @@ const { logError } = require('../utils/errorLogger');
 const { backupFiles } = require('../utils/storageClient');
 const axios = require('axios');
 
-async function processImagesAndUpdate({ files, postId, config, metadata }) {
+async function processImagesAndUpdate({ files, postId, config, backupPromise, metadata }) {
   try {
     console.log('Starting background processing for post:', postId);
 
-    // Start GCS backup in parallel - don't await
-    const backupPromise = backupFiles(files, config, {
-      session_id: metadata.session_id,
-      customer_email: metadata.customer_email,
-      post_id: postId
-    });
+    // If we have an existing backup promise, wait for it
+    let backupUrls;
+    if (backupPromise) {
+      console.log('Waiting for existing backup to complete');
+      backupUrls = await backupPromise;
+    }
 
     // Process and optimize images
     const processedImages = await processImages(files);
@@ -32,9 +32,6 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
         age: uploadedMedia.age?.id || ''
       }
     }, config);
-
-    // Check GCS backup results without blocking
-    const backupUrls = await backupPromise;
 
     // Send notification email
     await sendAppraisalNotification({

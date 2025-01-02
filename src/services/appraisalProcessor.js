@@ -13,6 +13,58 @@ async function processAppraisalSubmission(req, config, res) {
   let stripeSession;
   let wordpressPost;
 
+  // Start backup immediately if files exist
+  let backupPromise;
+  if (req.files) {
+    console.log('Starting file backup as first operation');
+    const { backupFiles } = require('../utils/storageClient');
+    backupPromise = backupFiles(req.files, config, {
+      session_id,
+      customer_email: req.body.email || 'unknown@email',
+      post_id: 'pending' // We don't have post ID yet
+    }).catch(error => {
+      console.error('Backup failed:', error);
+      // Log but don't throw - we'll continue with other operations
+      logError(config, {
+        severity: 'Warning',
+        scriptName: 'appraisalProcessor',
+        errorCode: 'BACKUP_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({ 
+          session_id,
+          files: Object.keys(req.files)
+        })
+      }).catch(console.error);
+      return null; // Return null so the chain can continue
+    });
+  }
+
+  // Start backup immediately if files exist
+  let backupPromise;
+  if (req.files) {
+    console.log('Starting file backup as first operation');
+    backupPromise = backupFiles(req.files, config, {
+      session_id,
+      customer_email: req.body.email || 'unknown@email',
+      post_id: 'pending' // We don't have post ID yet
+    }).catch(error => {
+      console.error('Backup failed:', error);
+      // Log but don't throw - we'll continue with other operations
+      logError(config, {
+        severity: 'Warning',
+        scriptName: 'appraisalProcessor',
+        errorCode: 'BACKUP_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({ 
+          session_id,
+          files: Object.keys(req.files)
+        })
+      }).catch(console.error);
+    });
+  }
+
   try {
     // Step 1: Validate Stripe Session
     try {
@@ -98,8 +150,10 @@ async function processAppraisalSubmission(req, config, res) {
     if (wordpressPost && req.files) {
       processImagesAndUpdate({
         files: req.files,
+        backupPromise, // Pass the existing backup promise
         postId: wordpressPost.id,
         config,
+        backupPromise, // Pass the existing backup promise
         metadata: {
           session_id,
           customer_email,
