@@ -26,8 +26,8 @@ function getCommonHeaders(config) {
 async function createInitialPost(postData, config) {
   try {
     console.log('Creating WordPress post with data:', JSON.stringify(postData, null, 2));
-    
-    // First create the basic post
+
+    // Create the post and wait for completion
     const response = await axios.post(
       `${config.WORDPRESS_API_URL}/appraisals`,
       {
@@ -39,15 +39,8 @@ async function createInitialPost(postData, config) {
 
     console.log('WordPress post created successfully:', JSON.stringify(response.data, null, 2));
 
-    // Then update ACF fields in a separate request
-    await updatePostAcfFields(response.data.id, {
-      session_id: postData.meta.session_id,
-      customer_email: postData.meta.customer_email,
-      customer_name: postData.meta.customer_name || '',
-      main: '',
-      signature: '',
-      age: ''
-    }, config);
+    // Update ACF fields with the metadata from postData
+    await updatePostAcfFields(response.data.id, postData.meta, config);
 
     return {
       id: response.data.id,
@@ -110,13 +103,21 @@ async function uploadMedia(buffer, filename, config) {
 async function updatePostAcfFields(postId, fields, config) {
   try {
     console.log('Updating post ACF fields:', JSON.stringify({ postId, fields }, null, 2));
-
-    // Update all fields in a single request with the correct structure
-    await updatePost(postId, {
-      fields: fields
-    }, config);
     
+    // Ensure post exists before updating fields
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Update ACF fields
+    const response = await updatePost(postId, {
+      fields
+    }, config);
+
+    if (!response || !response.id) {
+      throw new Error('Failed to update ACF fields - invalid response');
+    }
+
     console.log('ACF fields updated successfully');
+    return response;
   } catch (error) {
     console.error('Error updating ACF fields:', {
       url: error.config?.url,

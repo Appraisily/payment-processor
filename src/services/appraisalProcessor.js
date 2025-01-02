@@ -48,13 +48,16 @@ async function processAppraisalSubmission(req, config, res) {
     try {
       const postData = {
         title: `Art Appraisal Request - ${session_id}`,
-        content: description || 'No description provided',
+        content: '',
         type: 'appraisals',
         status: 'draft',
         meta: {
           session_id,
           customer_email: customer_email,
-          customer_name: customer_name
+          customer_name: customer_name,
+          main: '',
+          signature: '',
+          age: ''
         }
       };
 
