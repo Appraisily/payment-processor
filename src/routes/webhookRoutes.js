@@ -61,3 +61,7 @@ function setupWebhookRoutes(app, config) {
     handleWebhook(req, res, 'test');
   });
 }
+
+module.exports = {
+  setupWebhookRoutes
+};
