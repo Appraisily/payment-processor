@@ -70,6 +70,4 @@ function setupStripeRoutes(app, config) {
   app.use('/stripe', router);
 }
 
-module.exports = {
-  setupStripeRoutes
-};
+module.exports = setupStripeRoutes;

@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const { setupWebhookRoutes } = require('./routes/webhookRoutes');
-const { setupStripeRoutes } = require('./routes/stripeRoutes');
+const setupWebhookRoutes = require('./routes/webhookRoutes');
+const setupStripeRoutes = require('./routes/stripeRoutes');
 const { setupAppraisalRoutes } = require('./routes/appraisalRoutes');
 const loadConfig = require('./config');
 

@@ -62,6 +62,4 @@ function setupWebhookRoutes(app, config) {
   });
 }
 
-module.exports = {
-  setupWebhookRoutes
-};
+module.exports = setupWebhookRoutes;

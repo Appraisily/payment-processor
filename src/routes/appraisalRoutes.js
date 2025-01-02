@@ -64,3 +64,7 @@ function setupAppraisalRoutes(app, config) {
 
   app.use('/api/appraisals', router);
 }
+
+module.exports = {
+  setupAppraisalRoutes
+};
