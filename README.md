@@ -4,100 +4,91 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 
 ## Features
 
-- **Payment Processing**: Handles Stripe webhook events for completed checkout sessions
-- **Data Management**: Records transactions in Google Sheets
-- **WordPress Integration**: Creates and updates appraisal posts with media
-- **Image Processing**: Optimizes and stores images in both WordPress and Google Cloud Storage
-- **Email Notifications**: Sends automated emails using SendGrid
-- **Error Logging**: Comprehensive error tracking in Google Sheets
-- **Security**: Proper secret management and authentication
+- **Payment Processing**
+  - Stripe webhook handling for both test and live modes
+  - Secure payment verification with signature validation
+  - Automatic transaction recording in Google Sheets
+  - Support for multiple payment link types (Regular, Insurance, Tax)
 
-## Architecture
+- **Data Management**
+  - Google Sheets integration for sales and appraisals tracking
+  - Comprehensive error logging system
+  - Secure secret management via Google Cloud Secret Manager
+  - Caching system for configuration
 
-### Core Components
+- **WordPress Integration**
+  - Custom post type handling for appraisals
+  - Media upload and management
+  - ACF (Advanced Custom Fields) integration
+  - Secure authentication
 
-1. **Payment Processing**
-   - Stripe webhook handling
-   - Payment verification
-   - Transaction recording
+- **Image Processing**
+  - Automatic image optimization
+  - Format conversion to JPEG
+  - Size limits and validation
+  - EXIF data handling
 
-2. **Appraisal Management**
-   - Image processing and optimization
-   - WordPress post creation
-   - Google Cloud Storage backup
-   - Spreadsheet updates
+- **Email Notifications**
+  - SendGrid integration
+  - Dynamic template support
+  - HTML email templates
+  - Error notifications
 
-3. **Communication**
-   - Email notifications
-   - Error logging
-   - Status updates
+- **Security**
+  - Webhook signature verification
+  - API authentication
+  - Secure secret management
+  - Input validation
 
-### Data Flow
-
-1. **Payment Received**
-   - Stripe webhook triggered
-   - Payment verified
-   - Transaction recorded in Sales sheet
-   - Entry added to Pending Appraisals sheet
-
-2. **Appraisal Submission**
-   - Images received and processed
-   - WordPress post created
-   - Images uploaded to WordPress
-   - Backup copies stored in GCS
-   - Spreadsheet updated with WordPress URL
-   - Email notifications sent
-
-## Code Organization
+## Project Structure
 
 ```
 ├── src/
-│   ├── index.js                    # Application entry point
-│   ├── config.js                   # Configuration management
 │   ├── routes/
-│   │   ├── webhookRoutes.js       # Stripe webhook endpoints
-│   │   ├── stripeRoutes.js        # Stripe API endpoints
-│   │   └── appraisalRoutes.js     # Appraisal submission handling
+│   │   ├── appraisalRoutes.js    # Appraisal submission endpoints
+│   │   ├── stripeRoutes.js       # Stripe API endpoints
+│   │   └── webhookRoutes.js      # Webhook handling
 │   ├── services/
-│   │   ├── webhookHandler.js      # Webhook processing
-│   │   ├── checkoutProcessor.js   # Checkout session handling
-│   │   ├── backgroundProcessor.js  # Async processing
-│   │   └── appraisalProcessor.js  # Appraisal processing
+│   │   ├── appraisalProcessor.js # Appraisal processing logic
+│   │   ├── backgroundProcessor.js # Async processing
+│   │   ├── checkoutProcessor.js  # Checkout session handling
+│   │   └── webhookHandler.js     # Webhook processing
 │   └── utils/
-│       ├── errorLogger.js         # Error logging
-│       ├── emailService.js        # Email handling
-│       ├── imageProcessor.js      # Image optimization
-│       ├── spreadsheetClient.js   # Google Sheets operations
-│       ├── storageClient.js       # GCS operations
-│       ├── validators.js          # Input validation
-│       └── wordPressClient.js     # WordPress API integration
+│       ├── emailService.js       # Email handling
+│       ├── errorLogger.js        # Error logging
+│       ├── imageProcessor.js     # Image optimization
+│       ├── spreadsheetClient.js  # Google Sheets operations
+│       ├── storageClient.js      # GCS operations
+│       ├── validators.js         # Input validation
+│       └── wordPressClient.js    # WordPress API integration
+├── config.js                     # Configuration management
+└── index.js                     # Application entry point
 ```
 
-## Google Sheets Structure
+## Data Structures
 
-### Sales Sheet
-Columns:
-- A: Session ID
-- B: Payment Intent ID
-- C: Customer ID
-- D: Customer Name
-- E: Customer Email
-- F: Amount Paid
-- G: Session Date
-- H: Mode (Test/Live)
+### Google Sheets Structure
 
-### Pending Appraisals Sheet
-Columns:
-- A: Date
-- B: Appraisal Type
-- C: Session ID
-- D: Customer Email
-- E: Customer Name
-- F: Status
-- G: WordPress Edit URL
+#### Sales Sheet
+- Session ID
+- Payment Intent ID
+- Customer ID
+- Customer Name
+- Customer Email
+- Amount Paid
+- Session Date
+- Mode (Test/Live)
 
-### Error Log Sheet
-Columns:
+#### Pending Appraisals Sheet
+- Date
+- Appraisal Type
+- Session ID
+- Customer Email
+- Customer Name
+- Status
+- WordPress Edit URL
+
+#### Error Log Sheet
 - Timestamp
 - Severity
 - Script Name
@@ -114,91 +105,99 @@ Columns:
 - ChatGPT Link
 - Resolution Link
 
-## Required Secrets
-
-Configure these secrets in Google Cloud Secret Manager:
-
-```
-STRIPE_SECRET_KEY_TEST            # Stripe test API key
-STRIPE_SECRET_KEY_LIVE           # Stripe live API key
-STRIPE_WEBHOOK_SECRET_TEST       # Stripe test webhook secret
-STRIPE_WEBHOOK_SECRET_LIVE       # Stripe live webhook secret
-STRIPE_SHARED_SECRET            # API authentication secret
-SALES_SPREADSHEET_ID            # Sales sheet ID
-PENDING_APPRAISALS_SPREADSHEET_ID # Pending appraisals sheet ID
-LOG_SPREADSHEET_ID              # Error log sheet ID
-SENDGRID_API_KEY               # SendGrid API key
-SENDGRID_EMAIL                 # Verified sender email
-SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED # SendGrid template ID
-WORDPRESS_API_URL              # WordPress REST API endpoint
-wp_username                    # WordPress username
-wp_app_password               # WordPress application password
-ADMIN_EMAIL                   # Admin notification email
-SHARED_SECRET                 # Backend communication secret
-```
-
-## Environment Variables
-
-Optional configuration:
-```
-PORT                    # Server port (default: 8080)
-GOOGLE_CLOUD_PROJECT_ID # Google Cloud project ID
-CHATGPT_CHAT_URL       # Support chat URL
-RESOLUTION_LINK        # Issue resolution link
-ASSIGNED_TO            # Default assignee
-GCS_BUCKET_NAME        # GCS bucket for image backups
-```
-
 ## API Endpoints
 
 ### Stripe Webhooks
-
-#### POST `/stripe-webhook`
-Handles live mode webhook events.
-
-#### POST `/stripe-webhook-test`
-Handles test mode webhook events.
+- POST `/stripe-webhook`: Live mode webhook handler
+- POST `/stripe-webhook-test`: Test mode webhook handler
 
 ### Stripe API
-
-#### GET `/stripe/session/:sessionId`
-Retrieves session information.
-
-Headers:
-- `x-shared-secret`: Authentication token
+- GET `/stripe/session/:sessionId`: Retrieve session information
+  - Requires `x-shared-secret` header for authentication
 
 ### Appraisal Submission
+- POST `/api/appraisals`: Handle appraisal submissions
+  - Multipart form data
+  - Supports image uploads (main, signature, age)
+  - Maximum file size: 10MB
 
-#### POST `/api/appraisals`
-Handles appraisal submissions with images.
+## Configuration
 
-Content-Type: `multipart/form-data`
+### Required Secrets (Google Cloud Secret Manager)
+- `STRIPE_SECRET_KEY_TEST`
+- `STRIPE_SECRET_KEY_LIVE`
+- `STRIPE_WEBHOOK_SECRET_TEST`
+- `STRIPE_WEBHOOK_SECRET_LIVE`
+- `STRIPE_SHARED_SECRET`
+- `SALES_SPREADSHEET_ID`
+- `PENDING_APPRAISALS_SPREADSHEET_ID`
+- `LOG_SPREADSHEET_ID`
+- `SENDGRID_API_KEY`
+- `SENDGRID_EMAIL`
+- `SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED`
+- `WORDPRESS_API_URL`
+- `wp_username`
+- `wp_app_password`
+- `SHARED_SECRET`
+- `ADMIN_EMAIL`
 
-Fields:
-- `session_id`: Stripe session ID
-- `description`: (optional) Appraisal description
-- `main`: Main image file
-- `signature`: (optional) Signature image
-- `age`: (optional) Age verification image
+### Environment Variables
+- `PORT` (default: 8080)
+- `GOOGLE_CLOUD_PROJECT_ID`
+- `CHATGPT_CHAT_URL`
+- `RESOLUTION_LINK`
+- `ASSIGNED_TO`
+- `GCS_BUCKET_NAME` (default: 'appraisily-image-backups')
 
-## Required IAM Permissions
+## Payment Links Configuration
 
-The service account needs these permissions:
-
-```bash
-# Google Sheets API
-roles/sheets.editor
-
-# Secret Manager
-roles/secretmanager.secretAccessor
-
-# Cloud Storage
-roles/storage.objectViewer
-roles/storage.objectCreator
+Currently supported payment links:
+```javascript
+{
+  'plink_1PzzahAQSJ9n5XyNZTMmYyLJ': { productName: 'RegularArt' },
+  'plink_1OnRh5AQSJ9n5XyNBhDuqbtS': { productName: 'RegularArt' },
+  'plink_1OnRpsAQSJ9n5XyN2BCtWNEs': { productName: 'InsuranceArt' },
+  'plink_1OnRzAAQSJ9n5XyNyLmReeCk': { productName: 'TaxArt' }
+}
 ```
 
-## Running the Service
+## Error Handling
 
+The service implements comprehensive error handling:
+- Input validation
+- Webhook signature verification
+- API authentication
+- File upload validation
+- Database operation error handling
+- Third-party service integration error handling
+
+## Security Features
+
+1. **Authentication**
+   - Stripe webhook signature verification
+   - API shared secret authentication
+   - WordPress basic authentication
+
+2. **Data Protection**
+   - Secure secret management via Google Cloud
+   - Input validation and sanitization
+   - File type and size validation
+
+3. **Error Handling**
+   - Secure error logging
+   - No sensitive data in responses
+   - Proper HTTP status codes
+
+## Development
+
+### Prerequisites
+- Node.js 18+
+- Google Cloud project with required APIs enabled
+- Stripe account with webhook endpoints configured
+- WordPress installation with REST API and ACF
+- SendGrid account with verified sender
+
+### Installation
 ```bash
 # Install dependencies
 npm install
@@ -207,84 +206,53 @@ npm install
 npm start
 ```
 
-## Docker Deployment
-
+### Docker Support
 ```bash
-# Build the container
+# Build container
 docker build -t payment-processor .
 
-# Run the container
+# Run container
 docker run -p 8080:8080 payment-processor
 ```
 
-## Error Handling
+## Testing
 
-The service implements comprehensive error handling:
+The service includes:
+- Webhook testing endpoints
+- Separate test/live mode handling
+- Error logging for debugging
+- Comprehensive request validation
 
-1. **Validation Errors**: Input validation for all requests
-2. **Processing Errors**: Handled gracefully with proper logging
-3. **Integration Errors**: Managed with retries where appropriate
-4. **Security Errors**: Properly logged and handled
-5. **Network Errors**: Timeout handling and retry logic
+## Monitoring
 
-## Security Measures
-
-1. **Authentication**:
-   - Stripe webhook signature verification
-   - Shared secret for API endpoints
-   - WordPress basic authentication
-
-2. **Data Protection**:
-   - Secure secret management
-   - HTTPS enforcement
-   - Input validation
-   - CORS protection
-
-3. **Error Handling**:
-   - Secure error logging
-   - No sensitive data in responses
-   - Proper status codes
-
-## Monitoring and Logging
-
-1. **Error Logging**:
-   - Centralized logging in Google Sheets
-   - Severity levels
-   - Stack traces
-   - Context preservation
-
-2. **Transaction Tracking**:
-   - Payment records
-   - Processing status
-   - Audit trail
-
-3. **Status Monitoring**:
-   - Health check endpoint
-   - Process tracking
-   - Error rate monitoring
+The service provides:
+- Health check endpoint
+- Error logging to Google Sheets
+- Request tracking
+- Payment processing status monitoring
 
 ## Best Practices
 
-1. **Code Organization**:
-   - Modular design
-   - Single responsibility
-   - Clear dependencies
-   - Proper error handling
+1. **Code Organization**
+   - Modular architecture
+   - Clear separation of concerns
+   - Utility functions for reusability
+   - Consistent error handling
 
-2. **Security**:
+2. **Security**
    - Input validation
-   - Proper authentication
+   - Authentication
    - Secure configurations
    - Error handling
 
-3. **Performance**:
-   - Async operations
-   - Proper caching
+3. **Performance**
+   - Asynchronous operations
+   - Configuration caching
    - Optimized database queries
    - Resource management
 
-4. **Maintenance**:
+4. **Maintenance**
    - Clear documentation
    - Consistent coding style
-   - Error logging
+   - Comprehensive error logging
    - Version control
