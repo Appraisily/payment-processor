@@ -3,14 +3,11 @@ const FormData = require('form-data');
 
 async function updatePost(postId, data, config) {
   const endpoint = `${config.WORDPRESS_API_URL}/appraisals/${postId}`;
-  console.log('WordPress API Request:', {
+  console.log('WordPress API Request to update post:', {
     endpoint,
     method: 'POST',
-    headers: {
-      ...getCommonHeaders(config),
-      Authorization: '[REDACTED]'
-    },
-    data: JSON.stringify(data, null, 2)
+    acf_fields: data.acf ? Object.keys(data.acf) : [],
+    acf_values: data.acf
   });
 
   const response = await axios.post(
@@ -22,8 +19,8 @@ async function updatePost(postId, data, config) {
   console.log('WordPress API Response:', {
     status: response.status,
     statusText: response.statusText,
-    headers: response.headers,
-    data: JSON.stringify(response.data, null, 2)
+    updated_fields: response.data.acf ? Object.keys(response.data.acf) : [],
+    acf_values: response.data.acf
   });
 
   return response.data;
@@ -44,18 +41,22 @@ function getCommonHeaders(config) {
 
 async function createInitialPost(postData, config) {
   try {
-    const endpoint = `${config.WORDPRESS_API_URL}/appraisals`;
-    console.log('WordPress Create Post Request:', {
-      endpoint,
-      method: 'POST',
-      data: JSON.stringify(postData, null, 2)
+    console.log('Creating WordPress post with data:', {
+      title: postData.title,
+      content: postData.content,
+      status: postData.status,
+      acf: postData.meta
     });
+
+    const endpoint = `${config.WORDPRESS_API_URL}/appraisals`;
 
     const response = await axios.post(
       endpoint,
       {
-        ...postData,
-        status: 'draft'
+        title: postData.title,
+        content: postData.content,
+        status: postData.status,
+        acf: postData.meta
       },
       { headers: getCommonHeaders(config) }
     );
@@ -125,38 +126,23 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePostAcfFields(postId, fields, config) {
   try {
-    console.log('WordPress Update ACF Fields Request:', {
+    console.log('Updating ACF fields:', {
       postId,
-      fields: JSON.stringify(fields, null, 2)
+      acf: fields
     });
 
     const response = await updatePost(postId, {
-      meta: {
-        session_id: fields.session_id || '',
-        customer_email: fields.customer_email || '',
-        customer_name: fields.customer_name || '',
-        processing_status: fields.processing_status || 'pending',
-        main: fields.main || '',
-        signature: fields.signature || '',
-        age: fields.age || ''
-      }
+      acf: fields,
+      status: 'publish'
     }, config);
-
-    if (!response || !response.id) {
-      throw new Error('Failed to update ACF fields - invalid response');
-    }
-
-    console.log('WordPress ACF Fields Update Response:', {
-      id: response.id,
-      status: 'success'
-    });
+    
+    console.log('ACF fields updated successfully');
 
     return response;
   } catch (error) {
     console.error('Error updating ACF fields:', {
-      url: error.config?.url,
       message: error.message,
-      response: JSON.stringify(error.response?.data, null, 2),
+      response: error.response?.data,
       status: error.response?.status,
       headers: error.response?.headers
     });
@@ -166,18 +152,20 @@ async function updatePostAcfFields(postId, fields, config) {
 
 async function updatePostWithMedia(postId, updateData, config) {
   try {
-    console.log('Updating post with media:', JSON.stringify({ postId, updateData }, null, 2));
+    console.log('Updating post with media:', {
+      postId,
+      acf: updateData.meta
+    });
+    
     const response = await updatePost(postId, {
-      meta: updateData.meta || {}
+      acf: updateData.meta || {},
+      status: 'publish'
     }, config);
-    if (!response || !response.id) {
-      throw new Error('Failed to update post with media - invalid response');
-    }
+
     console.log('Post updated successfully');
     return response;
   } catch (error) {
     console.error('Error updating post:', {
-      url: error.config?.url,
       message: error.message,
       response: error.response?.data,
       status: error.response?.status

@@ -27,7 +27,6 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
     // Update post with media
     await updatePostWithMedia(postId, {
       meta: {
-        processing_status: 'completed',
         main: uploadedMedia.main?.id || '',
         signature: uploadedMedia.signature?.id || '',
         age: uploadedMedia.age?.id || ''
@@ -116,8 +115,6 @@ async function processImagesAndUpdate({ files, postId, config, metadata }) {
     // Update post to indicate error
     await updatePostWithMedia(postId, {
       meta: {
-        processing_status: 'error',
-        error_message: error.message,
         main: '',
         signature: '',
         age: ''

@@ -65,8 +65,7 @@ async function processAppraisalSubmission(req, config, res) {
         meta: {
           session_id,
           customer_email: customer_email,
-          customer_name: customer_name,
-          processing_status: 'pending',
+          customer_name: customer_name, 
           main: '',
           signature: '',
           age: ''
