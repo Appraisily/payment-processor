@@ -144,20 +144,19 @@ class AppraisalSheetsClient {
       const rowIndex = rows.findIndex(row => row[0] === session_id);
 
       if (rowIndex === -1) {
-            range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
-            values: [['PROCESSING', wordpressEditUrl]]
+        console.warn('Session ID not found in sheets:', session_id);
+        return;
+      }
+
+      const rowNumber = rowIndex + 1;
+      const batchUpdateRequest = {
+        spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
         resource: {
           valueInputOption: 'USER_ENTERED',
-          data: [
-            {
-              range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
-              values: [['SUBMITTED', data.wordpressEditUrl || '']]
-            },
-            {
-              range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!I${rowNumber}`,
-              values: [[data.description || '']]
-            }
-          ]
+          data: [{
+            range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
+            values: [['PROCESSING', wordpressEditUrl]]
+          }]
         }
       };
 
