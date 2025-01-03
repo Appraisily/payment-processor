@@ -1,16 +1,67 @@
 const axios = require('axios');
 const FormData = require('form-data');
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 
 const ENDPOINTS = {
   APPRAISALS: '/appraisals',
   MEDIA: '/media'
 };
 
+async function verifyPostInitialization(postId, config) {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`Verifying post initialization (attempt ${attempt}/${MAX_RETRIES}):`, {
+        post_id: postId
+      });
+
+      const response = await axios.get(
+        `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
+        { headers: getCommonHeaders(config) }
+      );
+
+      // Check if ACF fields are initialized
+      if (response.data && response.data.acf !== undefined) {
+        console.log('Post initialization verified:', {
+          post_id: postId,
+          acf_initialized: true,
+          attempt
+        });
+        return true;
+      }
+
+      console.log('Post not fully initialized yet:', {
+        post_id: postId,
+        attempt,
+        has_acf: response.data?.acf !== undefined
+      });
+
+      // Wait before next attempt
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+    } catch (error) {
+      console.error('Error verifying post initialization:', {
+        post_id: postId,
+        attempt,
+        error: error.message
+      });
+      
+      if (attempt === MAX_RETRIES) {
+        throw new Error('Failed to verify post initialization');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+    }
+  }
+  
+  return false;
+}
+
 // Export ENDPOINTS for use in other modules
 module.exports = {
   createPost,
   uploadMedia,
   updatePost,
+  verifyPostInitialization,
   ENDPOINTS
 };
 
@@ -185,6 +236,9 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePost(postId, data, config) {
   try {
+    // Verify post initialization before updating
+    await verifyPostInitialization(postId, config);
+    
     const outboundIP = await getOutboundIP();
     const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`;
     
