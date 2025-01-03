@@ -127,7 +127,6 @@ async function createPost(postData, config) {
       link: initialResponse.data.link,
       modified: initialResponse.data.modified
     });
-    }
 
     // Wait for post initialization
     await verifyPostInitialization(postId, config);
