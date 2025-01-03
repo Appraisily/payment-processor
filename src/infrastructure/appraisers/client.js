@@ -10,7 +10,12 @@ class AppraisersBackendClient {
     try {
       console.log('Notifying appraisers backend:', {
         session_id: data.session_id,
-        wordpress_url: data.wordpress_url
+        wordpress_url: data.wordpress_url,
+        images: {
+          main: data.images.main || '',
+          signature: data.images.signature || '',
+          age: data.images.age || ''
+        }
       });
 
       const response = await axios.post(
@@ -23,9 +28,9 @@ class AppraisersBackendClient {
           payment_id: data.payment_id || '',
           wordpress_url: data.wordpress_url,
           images: {
-            main: data.images.main?.url || '',
-            age: data.images.age?.url || '',
-            signature: data.images.signature?.url || ''
+            main: data.images.main || '',
+            age: data.images.age || '',
+            signature: data.images.signature || ''
           }
         },
         {

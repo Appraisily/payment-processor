@@ -131,9 +131,9 @@ class AppraisalRepository {
             description: submission.description,
             wordpress_url: post?.editUrl || '',
             images: {
-              main: uploadedMedia.main?.url || '',
-              signature: uploadedMedia.signature?.url || '',
-              age: uploadedMedia.age?.url || ''
+              main: uploadedMedia.main?.source_url || '',
+              signature: uploadedMedia.signature?.source_url || '',
+              age: uploadedMedia.age?.source_url || ''
             },
             payment_id: submission.payment_id
           });

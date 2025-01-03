@@ -196,7 +196,7 @@ async function updatePost(postId, data, config) {
     
     const postData = {
       status: data.status || 'publish',
-      acf: {
+      meta: {
         // Media fields
         main: data.meta.main || '',
         signature: data.meta.signature || '',
@@ -216,7 +216,7 @@ async function updatePost(postId, data, config) {
 
     console.log('Post updated successfully:', {
       id: postId,
-      acf: postData.acf,
+      meta: postData.meta,
       status: postData.status
     });
 

@@ -7,6 +7,39 @@ function setupAppraisalRoutes(app, config) {
   const router = express.Router();
   const appraisalService = new AppraisalService(config);
 
+  // Test endpoint to get WordPress post structure
+  router.get('/test-wp/:postId', async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const response = await axios.get(
+        `${config.WORDPRESS_API_URL}/posts/${postId}`,
+        { 
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${config.WORDPRESS_USERNAME}:${config.WORDPRESS_APP_PASSWORD}`).toString('base64')}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      
+      console.log('WordPress post structure:', {
+        id: response.data.id,
+        type: response.data.type,
+        status: response.data.status,
+        meta: response.data.meta,
+        acf: response.data.acf,
+        raw_response: response.data
+      });
+
+      res.json(response.data);
+    } catch (error) {
+      console.error('Error fetching WordPress post:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      res.status(500).json({ error: 'Failed to fetch WordPress post structure' });
+    }
+  });
   const upload = multer({
     limits: {
       fileSize: 10 * 1024 * 1024,
