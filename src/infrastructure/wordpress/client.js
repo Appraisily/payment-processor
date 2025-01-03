@@ -196,7 +196,7 @@ async function updatePost(postId, data, config) {
     
     const postData = {
       status: data.status || 'publish',
-      meta: {
+      acf: {
         // Media fields
         main: data.meta.main || '',
         signature: data.meta.signature || '',
@@ -205,8 +205,7 @@ async function updatePost(postId, data, config) {
         customer_name: data.meta.customer_name || '',
         customer_email: data.meta.customer_email || '',
         session_id: data.meta.session_id || ''
-      },
-      status: data.status || 'draft'
+      }
     };
 
     const response = await axios.post(
