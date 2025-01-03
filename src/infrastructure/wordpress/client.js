@@ -104,7 +104,7 @@ async function createPost(postData, config) {
 
     console.log('WordPress request payload:', {
       title: postData.title,
-      status: postData.status,
+      status: 'publish',
       content: postData.content
     });
 
@@ -113,7 +113,7 @@ async function createPost(postData, config) {
       {
         title: postData.title,
         content: postData.content,
-        status: postData.status
+        status: 'publish'
       },
       { headers: getCommonHeaders(config) }
     );
@@ -250,7 +250,7 @@ async function updatePost(postId, data, config) {
     });
     
     const postData = {
-      status: data.status || 'draft',
+      status: data.status || 'publish',
       acf: {}
     };
 
