@@ -26,7 +26,7 @@ async function createPost(postData, config) {
   try {
     console.log('Creating WordPress post:', {
       title: postData.title,
-      status: postData.status || 'draft'
+      status: 'publish'
     });
 
     const response = await axios.post(
@@ -34,7 +34,7 @@ async function createPost(postData, config) {
       {
         title: postData.title,
         content: postData.content,
-        status: postData.status || 'draft',
+        status: 'publish',
         meta: postData.meta
       },
       { headers: getCommonHeaders(config) }
