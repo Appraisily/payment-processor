@@ -1,15 +1,17 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-// IMPORTANT NOTE: WordPress API URL handling
-// The WORDPRESS_API_URL from config includes '/wp-json/wp/v2'
-// ✓ Correct: config.WORDPRESS_API_URL + '/appraisals'
-// ✗ Wrong: config.WORDPRESS_API_URL + '/wp/v2/appraisals'
-// This prevents the common error of duplicate 'wp/v2' in the path
-
 const ENDPOINTS = {
   APPRAISALS: '/appraisals',
   MEDIA: '/media'
+};
+
+// Export ENDPOINTS for use in other modules
+module.exports = {
+  createPost,
+  uploadMedia,
+  updatePost,
+  ENDPOINTS
 };
 
 async function getOutboundIP() {
