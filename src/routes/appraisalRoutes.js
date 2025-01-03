@@ -91,7 +91,7 @@ function setupAppraisalRoutes(app, config) {
     const submission = {
       session_id: req.body.session_id,
       description: req.body.description,
-      files: req.files,
+      images: req.files,
       customer_email: req.body.customer_email,
       customer_name: req.body.customer_name,
       payment_id: req.body.payment_id
@@ -101,8 +101,8 @@ function setupAppraisalRoutes(app, config) {
       session_id: submission.session_id,
       customer_email: submission.customer_email,
       customer_name: submission.customer_name,
-      hasFiles: !!submission.files,
-      fileTypes: submission.files ? Object.keys(submission.files) : []
+      hasFiles: !!submission.images,
+      fileTypes: submission.images ? Object.keys(submission.images) : []
     });
 
     // Send immediate success response

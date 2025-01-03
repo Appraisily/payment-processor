@@ -21,7 +21,7 @@ class AppraisalRepository {
 
     try {
       // Start file backup early using GCS client
-      backupPromise = images ? this.gcsClient.backupFiles(images, {
+      backupPromise = images?.main ? this.gcsClient.backupFiles(images, {
         session_id,
         customer_email,
         post_id: 'pending'
@@ -102,7 +102,7 @@ class AppraisalRepository {
       }
 
       // Process images if any
-      if (images) {
+      if (images?.main) {
         const processedImages = await optimizeImages(images);
         uploadedMedia = await this.uploadAllMedia(processedImages);
 
@@ -175,7 +175,7 @@ class AppraisalRepository {
         stackTrace: error.stack,
         additionalContext: JSON.stringify({ 
           session_id,
-          hasFiles: !!files,
+          hasFiles: !!images?.main,
           error: error.response?.data || error.message
         })
       });

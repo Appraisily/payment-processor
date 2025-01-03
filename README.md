@@ -134,23 +134,58 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 ### Appraisal Submission
 - POST `/api/appraisals`: Handle appraisal submissions
   - Multipart form data
-  - Supports image uploads (main, signature, age)
+  - Supports image uploads:
+    - `main`: Required main artwork image
+    - `signature`: Optional signature/marks image
+    - `age`: Optional age indicators image
   - Maximum file size: 10MB per file
+  - Request format:
+    ```typescript
+    {
+      session_id: string;       // Required: Stripe session ID
+      description?: string;     // Optional: Text description of artwork
+      customer_email?: string;  // Optional: Will be fetched from Stripe if not provided
+      customer_name?: string;   // Optional: Will be fetched from Stripe if not provided
+      payment_id?: string;      // Optional: Additional payment reference
+      files: {
+        main: File[];          // Required: Main artwork image
+        signature?: File[];    // Optional: Signature/marks image
+        age?: File[];         // Optional: Age indicators image
+      }
+    }
+    ```
   
   Processing Steps:
   1. Immediate 200 response sent to client
   2. Background processing begins:
-     - Backup submitted files to Google Cloud Storage
-     - Create WordPress post with appraisal details
-     - Process and optimize images
-     - Upload optimized images to WordPress media library
-     - Update WordPress post with media IDs
-     - Update ACF fields, customer_name, customer_email and session_id 
-     - Record submission in Google Sheets
-     - Notify appraisers backend service
+     - Validate submission data and files
+     - Start GCS backup of original files (async)
+     - Create WordPress post (custom post type: appraisals)
+     - Update post with customer metadata
+     - Record submission in Google Sheets (Pending Appraisals)
+     - Process and optimize images:
+       - Convert to JPEG format
+       - Optimize quality (85%)
+       - Resize if needed (max 2000x2000)
+       - Preserve EXIF rotation
+     - Upload optimized images to WordPress
+     - Update WordPress post with:
+       - Media IDs and URLs
+       - ACF fields (main, signature, age)
+       - Customer information
+     - Notify appraisers backend service with:
+       - Session details
+       - Customer information
+       - WordPress post URL
+       - Image URLs
+     - Update sheets status to "SUBMITTED"
 
   Each step is logged for monitoring and debugging purposes.
-  If any step fails, the error is logged but doesn't affect the client response.
+  Error handling:
+    - All errors are logged to Google Sheets error log
+    - Non-critical errors don't stop the process
+    - Each step has independent error handling
+    - Immediate client response not affected by background processing
 
 ## Configuration
 
@@ -224,18 +259,17 @@ The service implements comprehensive error handling:
 ### API Data Structures
 
 #### Appraisal Submission
-```typescript
-{
-  session_id: string;       // The Stripe session ID from the URL
-  description?: string;     // Optional text description provided by user
-  images: {
-    main: File;            // Required main artwork image
-    signature?: File;      // Optional signature/marks image
-    age?: File;           // Optional age indicators image
-  }
-}
-```
-This data structure is sent to the `/api/appraisals` endpoint from the frontend AppraisalUploadForm component.
+The appraisal submission process is handled by the AppraisalUploadForm component
+which sends data to the `/api/appraisals` endpoint. The service validates:
+
+- File types: JPEG, PNG, WebP
+- File sizes: Maximum 10MB per file
+- Required fields: session_id, main image
+- Description length: Maximum 2000 characters
+- Session ID format: Alphanumeric with hyphens/underscores
+
+Customer information is automatically retrieved from Stripe if not provided
+in the request.
 
 
 ### Prerequisites
