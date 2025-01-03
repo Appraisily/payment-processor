@@ -197,39 +197,19 @@ async function updatePost(postId, data, config) {
     
     const postData = {
       status: data.status || 'draft',
-      acf: data.meta ? {
-        value: data.meta.value || 0,
-        main: data.meta.main || null,
-        signature: data.meta.signature || null,
-        age: data.meta.age || null,
-        similar: data.meta.similar || null,
-        customer_email: data.meta.customer_email || '',
-        secondary_email: data.meta.secondary_email || '',
-        customer_name: data.meta.customer_name || '',
-        customer_address: data.meta.customer_address || '',
-        session_id: data.meta.session_id || '',
-        googlevision: data.meta.googlevision || null,
-        _gallery_populated: data.meta._gallery_populated || 'false',
-        table: data.meta.table || '',
-        ad_copy: data.meta.ad_copy || '',
-        age_text: data.meta.age_text || '',
-        age1: data.meta.age1 || '',
-        condition: data.meta.condition || '',
-        signature1: data.meta.signature1 || '',
-        signature2: data.meta.signature2 || '',
-        style: data.meta.style || '',
-        valuation_method: data.meta.valuation_method || '',
-        authorship: data.meta.authorship || '',
-        conclusion1: data.meta.conclusion1 || '',
-        conclusion2: data.meta.conclusion2 || '',
-        test: data.meta.test || '',
-        pdflink: data.meta.pdflink || '',
-        doclink: data.meta.doclink || '',
-        glossary: data.meta.glossary || '',
-        shortcodes_inserted: data.meta.shortcodes_inserted || false,
-        appraisaltype: data.meta.appraisaltype || ''
-      } : {}
+      acf: {}
     };
+
+    // Add ACF fields if meta data is provided
+    if (data.meta) {
+      // Update ACF fields directly
+      postData.acf.main = data.meta.main || '';
+      postData.acf.signature = data.meta.signature || '';
+      postData.acf.age = data.meta.age || '';
+      postData.acf.customer_email = data.meta.customer_email || '';
+      postData.acf.customer_name = data.meta.customer_name || '';
+      postData.acf.session_id = data.meta.session_id || '';
+    }
 
     const response = await axios.post(
       endpoint,
