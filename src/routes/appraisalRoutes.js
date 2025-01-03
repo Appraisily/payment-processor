@@ -3,6 +3,7 @@ const multer = require('multer');
 const { processAppraisalSubmission } = require('../services/appraisalProcessor');
 const { validateAppraisalRequest } = require('../utils/validators');
 const { logError } = require('../utils/errorLogger');
+const { backupFiles } = require('../utils/storageClient');
 
 function setupAppraisalRoutes(app, config) {
   const router = express.Router();
@@ -35,8 +36,28 @@ function setupAppraisalRoutes(app, config) {
         });
       }
 
+      // Send immediate success response
+      res.status(200).json({
+        success: true,
+        message: 'Processing started'
+      });
+
       // Process the submission
-      await processAppraisalSubmission(req, config, res);
+      processAppraisalSubmission(req, config).catch(error => {
+        console.error('Background processing error:', error);
+        logError(config, {
+          severity: 'Error',
+          scriptName: 'appraisalRoutes',
+          errorCode: error.code || 'BACKGROUND_PROCESSING_ERROR',
+          errorMessage: error.message,
+          stackTrace: error.stack,
+          userId: req.body.customer_email,
+          additionalContext: JSON.stringify({
+            session_id: req.body.session_id,
+            hasFiles: !!req.files
+          })
+        }).catch(console.error);
+      });
 
     } catch (error) {
       console.error('Error processing appraisal submission:', error);
@@ -60,13 +81,11 @@ function setupAppraisalRoutes(app, config) {
         resolutionStatus: 'Open'
       });
 
-      // Only send error response if one hasn't been sent yet
-      if (!res.headersSent) {
-        res.status(500).json({
+      // Send error response
+      res.status(500).json({
         success: false,
         error: error.message
       });
-      }
     }
   });
 
