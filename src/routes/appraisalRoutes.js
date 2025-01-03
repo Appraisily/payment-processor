@@ -1,11 +1,47 @@
 const express = require('express');
 const multer = require('multer');
+const axios = require('axios');
 const AppraisalService = require('../domain/appraisal/service');
 const { logError } = require('../utils/error/logger'); 
 
 function setupAppraisalRoutes(app, config) {
   const router = express.Router();
   const appraisalService = new AppraisalService(config);
+
+  // Debug endpoint to inspect WordPress post structure
+  router.get('/inspect-wp/:postId', async (req, res) => {
+    try {
+      const { postId } = req.params;
+      console.log(`Inspecting WordPress post structure for ID: ${postId}`);
+      
+      const response = await axios.get(
+        `${config.WORDPRESS_API_URL}/posts/${postId}`,
+        {
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${config.WORDPRESS_USERNAME}:${config.WORDPRESS_APP_PASSWORD}`).toString('base64')}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      
+      console.log('WordPress post structure:', {
+        id: response.data.id,
+        type: response.data.type,
+        status: response.data.status,
+        meta: response.data.meta,
+        acf: response.data.acf
+      });
+
+      res.json(response.data);
+    } catch (error) {
+      console.error('Error fetching WordPress post:', {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      res.status(500).json({ error: 'Failed to fetch WordPress post structure' });
+    }
+  });
 
   // Test endpoint to get WordPress post structure
   router.get('/test-wp/:postId', async (req, res) => {
@@ -141,7 +177,7 @@ function setupAppraisalRoutes(app, config) {
     // Send immediate success response
     res.status(200).json({
       success: true,
-      message: 'Submission received and processing started',
+      message: 'Submission received and processing started. For debugging, you can inspect the WordPress post structure at /api/appraisals/inspect-wp/{postId}',
       session_id: submission.session_id
     });
 
