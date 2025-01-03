@@ -99,7 +99,7 @@ async function createPost(postData, config) {
       url: endpoint,
       meta: postData.meta,
       content_length: postData.content.length,
-      status: postData.status
+      status: 'publish'
     });
 
     console.log('WordPress request payload:', {
@@ -241,12 +241,19 @@ async function updatePost(postId, data, config) {
     
     const outboundIP = await getOutboundIP();
     const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`;
-    
+
     console.log('Updating WordPress post:', {
       outboundIP,
       postId,
       url: endpoint,
-      fields: Object.keys(data.meta)
+      acf: {
+        main: data.meta.main || '',
+        signature: data.meta.signature || '',
+        age: data.meta.age || '',
+        customer_email: data.meta.customer_email || '',
+        customer_name: data.meta.customer_name || '',
+        session_id: data.meta.session_id || ''
+      }
     });
     
     const postData = {
@@ -276,12 +283,12 @@ async function updatePost(postId, data, config) {
     return response.data;
   } catch (error) {
     console.error('Error updating post:', error);
-    console.error('Update post error details:', {
+    console.error('Error updating post - Full response:', {
       status: error.response?.status,
+      statusText: error.response?.statusText,
       data: error.response?.data,
+      headers: error.response?.headers,
       message: error.message,
-      postId,
-      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`
     });
     throw new Error('Failed to update post');
   }
