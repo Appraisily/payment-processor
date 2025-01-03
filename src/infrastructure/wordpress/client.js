@@ -52,7 +52,7 @@ async function createPost(postData, config) {
     console.log('WordPress request payload:', {
       title: postData.title,
       status: postData.status,
-      acf_fields: Object.keys(postData.meta)
+      content: postData.content
     });
 
     const response = await axios.post(
@@ -60,12 +60,11 @@ async function createPost(postData, config) {
       {
         title: postData.title,
         content: postData.content,
-        status: postData.status,
-        acf: postData.meta
+        status: postData.status
       },
       { headers: getCommonHeaders(config) }
     );
-    
+
     // Validate response data
     if (!response.data || !response.data.id) {
       throw new Error('Invalid response from WordPress: Missing post ID');
@@ -78,8 +77,7 @@ async function createPost(postData, config) {
       status: response.data.status,
       type: response.data.type,
       link: response.data.link,
-      modified: response.data.modified,
-      acf: response.data.acf
+      modified: response.data.modified
     });
 
     return {
@@ -125,9 +123,8 @@ async function uploadMedia(buffer, filename, config) {
     const form = new FormData();
     console.log('Creating form data for media upload');
     form.append('file', buffer, {
-      filename,
-      contentType: 'image/jpeg',
-      knownLength: buffer.length
+      filename: filename,
+      contentType: 'image/jpeg'
     });
 
     console.log('Media upload request configuration:', {
@@ -142,9 +139,8 @@ async function uploadMedia(buffer, filename, config) {
       form,
       {
         headers: {
-          ...form.getHeaders(),
           Authorization: getAuthHeader(config),
-          'Content-Length': buffer.length
+          ...form.getHeaders()
         }
       }
     );

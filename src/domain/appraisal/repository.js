@@ -17,40 +17,52 @@ class AppraisalRepository {
     const { session_id, files, customer_email, customer_name } = submission;
     let uploadedMedia = {};
     let post = null;
+    let backupPromise = null;
 
     try {
       // Start file backup early using GCS client
-      const backupPromise = files ? this.gcsClient.backupFiles(files, {
+      backupPromise = files ? this.gcsClient.backupFiles(files, {
         session_id,
         customer_email,
         post_id: 'pending'
       }) : Promise.resolve(null);
 
-      // Create WordPress post
+      // Create minimal WordPress post first
       try {
         console.log('Attempting to create WordPress post:', {
           session_id,
-          customer_email
+          customer_email,
+          minimal: true
         });
 
         post = await createPost({
           title: `Art Appraisal Request - ${session_id}`,
           content: ' ',
-          status: 'draft',
-          meta: {
-            session_id,
-            customer_email,
-            customer_name,
-            main: '',
-            signature: '',
-            age: ''
-          }
+          status: 'draft'
         }, this.config);
 
         console.log('WordPress post created successfully:', {
           post_id: post.id,
           edit_url: post.editUrl
         });
+
+        // Now update the post with metadata
+        try {
+          await updatePost(post.id, {
+            meta: {
+              session_id,
+              customer_email,
+              customer_name,
+              main: '',
+              signature: '',
+              age: ''
+            }
+          }, this.config);
+          console.log('Updated WordPress post with metadata');
+        } catch (metaError) {
+          console.error('Failed to update post metadata:', metaError);
+          // Continue execution despite metadata update error
+        }
       } catch (wpError) {
         console.error('WordPress post creation failed:', {
           error: wpError.message,
