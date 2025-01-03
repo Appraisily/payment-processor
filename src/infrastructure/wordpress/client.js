@@ -106,38 +106,78 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePost(postId, data, config) {
   try {
-    const postData = {
-      status: data.status || 'publish',
-      acf: {
-        main: data.meta?.main || '',
-        signature: data.meta?.signature || '',
-        age: data.meta?.age || '',
-        customer_email: data.meta?.customer_email || '',
-        customer_name: data.meta?.customer_name || '',
-        session_id: data.meta?.session_id || ''
-      }
+    // Update status first
+    await updatePostStatus(postId, data.status || 'publish', config);
+
+    // Update each ACF field individually
+    const acfFields = {
+      main: data.meta?.main || '',
+      signature: data.meta?.signature || '',
+      age: data.meta?.age || '',
+      customer_email: data.meta?.customer_email || '',
+      customer_name: data.meta?.customer_name || '',
+      session_id: data.meta?.session_id || ''
     };
 
-    console.log('WordPress update payload:', postData);
-    console.log('WordPress update URL:', `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`);
+    for (const [field, value] of Object.entries(acfFields)) {
+      try {
+        console.log(`Updating ACF field "${field}":`, { value });
+        
+        const fieldData = {
+          acf: {
+            [field]: value
+          }
+        };
 
-    const response = await axios.post(
-      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-      postData,
-      { headers: getCommonHeaders(config) }
-    );
+        const response = await axios.post(
+          `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
+          fieldData,
+          { headers: getCommonHeaders(config) }
+        );
 
-    console.log('Post updated successfully:', {
-      id: postId,
-      status: response.data.status
-    });
+        console.log(`Field "${field}" updated successfully`);
+      } catch (fieldError) {
+        console.error(`Failed to update field "${field}":`, {
+          error: fieldError.message,
+          status: fieldError.response?.status,
+          data: fieldError.response?.data
+        });
+        // Continue with other fields even if one fails
+      }
+    }
 
-    return response.data;
+    return { id: postId, status: 'updated' };
 
   } catch (error) {
     console.error('Post update failed:', {
       error: error.message,
       postId,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    throw error;
+  }
+}
+
+async function updatePostStatus(postId, status, config) {
+  try {
+    console.log('Updating post status:', { postId, status });
+    
+    const response = await axios.post(
+      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
+      { status },
+      { headers: getCommonHeaders(config) }
+    );
+
+    console.log('Status updated successfully:', {
+      id: postId,
+      status: response.data.status
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Status update failed:', {
+      error: error.message,
       status: error.response?.status,
       data: error.response?.data
     });
