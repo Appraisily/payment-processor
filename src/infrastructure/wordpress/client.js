@@ -118,11 +118,8 @@ async function updatePost(postId, data, config) {
       }
     };
 
-    console.log('Updating post with data:', {
-      postId,
-      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-      payload: JSON.stringify(postData, null, 2)
-    });
+    console.log('WordPress update payload:', postData);
+    console.log('WordPress update URL:', `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`);
 
     const response = await axios.post(
       `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
