@@ -12,6 +12,7 @@ const ENDPOINTS = {
   MEDIA: '/media'
 };
 
+
 async function getOutboundIP() {
   try {
     const response = await axios.get('https://api.ipify.org?format=json');
@@ -184,7 +185,7 @@ async function uploadMedia(buffer, filename, config) {
 async function updatePost(postId, data, config) {
   try {
     const outboundIP = await getOutboundIP();
-    const endpoint = `${config.WORDPRESS_API_URL}/posts/${postId}`;
+    const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`;
     
     console.log('Updating WordPress post:', {
       outboundIP,

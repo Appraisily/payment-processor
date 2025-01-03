@@ -14,14 +14,14 @@ class AppraisalRepository {
   }
 
   async createAppraisal(submission) {
-    const { session_id, files, customer_email, customer_name } = submission;
+    const { session_id, images, customer_email, customer_name } = submission;
     let uploadedMedia = {};
     let post = null;
     let backupPromise = null;
 
     try {
       // Start file backup early using GCS client
-      backupPromise = files ? this.gcsClient.backupFiles(files, {
+      backupPromise = images ? this.gcsClient.backupFiles(images, {
         session_id,
         customer_email,
         post_id: 'pending'
@@ -102,8 +102,8 @@ class AppraisalRepository {
       }
 
       // Process images if any
-      if (files) {
-        const processedImages = await optimizeImages(files);
+      if (images) {
+        const processedImages = await optimizeImages(images);
         uploadedMedia = await this.uploadAllMedia(processedImages);
 
         // Only update WordPress if post was created

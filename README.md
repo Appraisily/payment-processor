@@ -221,6 +221,23 @@ The service implements comprehensive error handling:
 
 ## Development
 
+### API Data Structures
+
+#### Appraisal Submission
+```typescript
+{
+  session_id: string;       // The Stripe session ID from the URL
+  description?: string;     // Optional text description provided by user
+  images: {
+    main: File;            // Required main artwork image
+    signature?: File;      // Optional signature/marks image
+    age?: File;           // Optional age indicators image
+  }
+}
+```
+This data structure is sent to the `/api/appraisals` endpoint from the frontend AppraisalUploadForm component.
+
+
 ### Prerequisites
 - Node.js 18+
 - Google Cloud project with required APIs enabled

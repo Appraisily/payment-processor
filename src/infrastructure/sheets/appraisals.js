@@ -53,25 +53,27 @@ class AppraisalSheetsClient {
           description_length: data.description?.length
         });
 
-        // Update status (column F), WordPress URL (column G), and description (column I)
-        const updates = [
-          {
-            range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
-            values: [['SUBMITTED', data.wordpressEditUrl || '']]
-          },
-          {
-            range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!I${rowNumber}`,
-            values: [[data.description || '']]
-          }
-        ];
-
-        const batchUpdateRequest = {
+        // Update status and WordPress URL
+        await sheets.spreadsheets.values.update({
           spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+          range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
           valueInputOption: 'USER_ENTERED',
-          data: updates
-        };
+          resource: {
+            values: [['SUBMITTED', data.wordpressEditUrl || '']]
+          }
+        });
 
-        await sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
+        // Update description if provided
+        if (data.description) {
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+            range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!I${rowNumber}`,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+              values: [[data.description]]
+            }
+          });
+        }
 
         console.log('Successfully updated existing row in sheets:', {
           session_id: data.session_id,

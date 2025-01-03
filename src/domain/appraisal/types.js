@@ -2,7 +2,10 @@
  * @typedef {Object} AppraisalSubmission
  * @property {string} session_id - Stripe session ID
  * @property {string} description - Optional appraisal description
- * @property {Object} files - Uploaded files
+ * @property {Object} images - Uploaded image files
+ * @property {File[]} images.main - Required main artwork image
+ * @property {File[]} [images.signature] - Optional signature/marks image
+ * @property {File[]} [images.age] - Optional age indicators image
  * @property {string} customer_email - Customer email
  * @property {string} customer_name - Customer name
  * @property {string} payment_id - Optional payment ID
