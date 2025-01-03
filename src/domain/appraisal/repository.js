@@ -1,6 +1,5 @@
 const { createPost, uploadMedia, updatePost } = require('../../infrastructure/wordpress/client');
 const GCSClient = require('../../infrastructure/storage/gcs');
-const { optimizeImages } = require('../../infrastructure/image/processor');
 const { logError } = require('../../utils/error/logger');
 const AppraisalSheetsClient = require('../../infrastructure/sheets/appraisals');
 const AppraisersBackendClient = require('../../infrastructure/appraisers/client');
@@ -103,8 +102,7 @@ class AppraisalRepository {
 
       // Process images if any
       if (images?.main) {
-        const processedImages = await optimizeImages(images);
-        uploadedMedia = await this.uploadAllMedia(processedImages);
+        uploadedMedia = await this.uploadAllMedia(images);
 
         // Only update WordPress if post was created
         if (post) {
@@ -131,9 +129,9 @@ class AppraisalRepository {
             description: submission.description,
             wordpress_url: post?.editUrl || '',
             images: {
-              main: uploadedMedia.main?.source_url || '',
-              signature: uploadedMedia.signature?.source_url || '',
-              age: uploadedMedia.age?.source_url || ''
+              main: uploadedMedia.main?.url || '',
+              signature: uploadedMedia.signature?.url || '',
+              age: uploadedMedia.age?.url || ''
             },
             payment_id: submission.payment_id
           });
@@ -186,8 +184,9 @@ class AppraisalRepository {
   async uploadAllMedia(processedImages) {
     const uploadedMedia = {};
     for (const [key, buffer] of Object.entries(processedImages)) {
+      if (!buffer?.[0]) continue;
       uploadedMedia[key] = await uploadMedia(
-        buffer,
+        buffer[0].buffer,
         `${key}-${Date.now()}.jpg`,
         this.config
       );
