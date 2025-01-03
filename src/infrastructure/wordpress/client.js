@@ -184,15 +184,17 @@ async function uploadMedia(buffer, filename, config) {
 async function updatePost(postId, data, config) {
   try {
     const outboundIP = await getOutboundIP();
+    const endpoint = `${config.WORDPRESS_API_URL}/posts/${postId}`;
+    
     console.log('Updating WordPress post:', {
       outboundIP,
       postId,
-      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
+      url: endpoint,
       fields: Object.keys(data.meta)
     });
     
-    // Combine all ACF fields
-    const acfData = {
+    const postData = {
+      status: data.status || 'publish',
       acf: {
         // Media fields
         main: data.meta.main || '',
@@ -206,14 +208,15 @@ async function updatePost(postId, data, config) {
     };
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-      acfData,
+      endpoint,
+      postData,
       { headers: getCommonHeaders(config) }
     );
 
     console.log('Post updated successfully:', {
       id: postId,
-      acf: acfData.acf
+      acf: postData.acf,
+      status: postData.status
     });
 
     return response.data;

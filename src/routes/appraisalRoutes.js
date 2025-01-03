@@ -38,9 +38,7 @@ function setupAppraisalRoutes(app, config) {
     // Get customer info from Stripe session if not provided
     if (!req.body.customer_email || !req.body.customer_name) {
       try {
-        const stripe = require('stripe')(
-          config.STRIPE_SECRET_KEY_LIVE
-        );
+        const stripe = require('stripe')(config.STRIPE_SECRET_KEY_LIVE);
         const session = await stripe.checkout.sessions.retrieve(
           req.body.session_id,
           { expand: ['customer_details'] }
@@ -52,12 +50,9 @@ function setupAppraisalRoutes(app, config) {
           customer_name: session.customer_details?.name
         });
 
-        if (!req.body.customer_email) {
-          req.body.customer_email = session.customer_details?.email;
-        }
-        if (!req.body.customer_name) {
-          req.body.customer_name = session.customer_details?.name;
-        }
+        // Always use Stripe session data for customer details
+        req.body.customer_email = session.customer_details?.email;
+        req.body.customer_name = session.customer_details?.name;
       } catch (error) {
         console.error('Error retrieving Stripe session:', error);
       }
@@ -67,8 +62,8 @@ function setupAppraisalRoutes(app, config) {
       session_id: req.body.session_id,
       description: req.body.description,
       files: req.files,
-      customer_email: req.body.customer_email || 'unknown@email',
-      customer_name: req.body.customer_name || 'Unknown Customer',
+      customer_email: req.body.customer_email,
+      customer_name: req.body.customer_name,
       payment_id: req.body.payment_id
     };
 

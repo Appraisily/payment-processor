@@ -4,7 +4,6 @@ const { logError } = require('../../utils/error/logger');
 class AppraisersBackendClient {
   constructor(config) {
     this.config = config;
-    this.baseUrl = config.APPRAISERS_BACKEND_URL || 'https://appraisers-backend-856401495068.us-central1.run.app';
   }
 
   async notifySubmission(data) {
@@ -15,7 +14,7 @@ class AppraisersBackendClient {
       });
 
       const response = await axios.post(
-        `${this.baseUrl}/api/update-pending-appraisal`,
+        'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
         {
           session_id: data.session_id,
           customer_email: data.customer_email,
@@ -34,11 +33,15 @@ class AppraisersBackendClient {
             'Content-Type': 'application/json',
             'x-shared-secret': this.config.SHARED_SECRET
           },
-          timeout: 10000 // 10 second timeout
+          timeout: 10000
         }
       );
 
-      console.log('Successfully notified appraisers backend');
+      console.log('Successfully notified appraisers backend:', {
+        status: response.status,
+        data: response.data
+      });
+
       return response.data;
     } catch (error) {
       console.error('Error notifying appraisers backend:', {

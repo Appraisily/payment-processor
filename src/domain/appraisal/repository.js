@@ -129,9 +129,13 @@ class AppraisalRepository {
             customer_email,
             customer_name,
             description: submission.description,
-            payment_id: submission.payment_id,
             wordpress_url: post?.editUrl || '',
-            images: uploadedMedia
+            images: {
+              main: uploadedMedia.main?.url || '',
+              signature: uploadedMedia.signature?.url || '',
+              age: uploadedMedia.age?.url || ''
+            },
+            payment_id: submission.payment_id
           });
           console.log('Notified appraisers backend successfully');
         } catch (backendError) {
