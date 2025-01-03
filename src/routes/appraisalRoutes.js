@@ -48,7 +48,7 @@ function setupAppraisalRoutes(app, config) {
     try {
       const { postId } = req.params;
       const response = await axios.get(
-        `${config.WORDPRESS_API_URL}/posts/${postId}`,
+        `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
         { 
           headers: {
             Authorization: `Basic ${Buffer.from(`${config.WORDPRESS_USERNAME}:${config.WORDPRESS_APP_PASSWORD}`).toString('base64')}`,
