@@ -145,9 +145,8 @@ function setupAppraisalRoutes(app, config) {
     // Send immediate success response
     res.status(200).json({
       success: true,
-      message: 'Submission received and processing started. For debugging, you can inspect the WordPress post structure at /api/appraisals/inspect-wp/{postId}',
+      message: 'Submission received and processing started',
       session_id: submission.session_id
-      test_url: `/api/appraisals/test-wp/${submission.session_id}`
     });
 
     // Process submission in background
