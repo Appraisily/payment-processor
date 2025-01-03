@@ -21,9 +21,39 @@ function setupAppraisalRoutes(app, config) {
   ];
 
   router.post('/', upload.fields(uploadFields), async (req, res) => {
+    // Log raw request data
+    console.log('Raw request data:', {
+      body: req.body,
+      files: req.files,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'content-length': req.headers['content-length']
+      }
+    });
+
+    // Log complete request information
     console.log('Received appraisal submission request with body:', {
-      ...req.body,
-      files: req.files ? Object.keys(req.files) : []
+      session_id: req.body.session_id,
+      description: req.body.description,
+      customer_email: req.body.customer_email,
+      customer_name: req.body.customer_name,
+      files: req.files ? {
+        main: req.files.main?.[0] ? {
+          originalname: req.files.main[0].originalname,
+          mimetype: req.files.main[0].mimetype,
+          size: req.files.main[0].size
+        } : undefined,
+        signature: req.files.signature?.[0] ? {
+          originalname: req.files.signature[0].originalname,
+          mimetype: req.files.signature[0].mimetype,
+          size: req.files.signature[0].size
+        } : undefined,
+        age: req.files.age?.[0] ? {
+          originalname: req.files.age[0].originalname,
+          mimetype: req.files.age[0].mimetype,
+          size: req.files.age[0].size
+        } : undefined
+      } : {}
     });
 
     // Validate required fields
