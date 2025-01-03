@@ -240,31 +240,32 @@ async function updatePost(postId, data, config) {
     const outboundIP = await getOutboundIP();
     const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`;
 
+    // Filter out any undefined or null values from ACF fields
+    const acfFields = {
+      main: data.meta.main || '',
+      signature: data.meta.signature || '',
+      age: data.meta.age || '',
+      customer_email: data.meta.customer_email || '',
+      customer_name: data.meta.customer_name || '',
+      session_id: data.meta.session_id || ''
+    };
+
     console.log('Updating WordPress post:', {
       outboundIP,
       postId,
       url: endpoint,
-      acf: {
-        main: data.meta.main || '',
-        signature: data.meta.signature || '',
-        age: data.meta.age || '',
-        customer_email: data.meta.customer_email || '',
-        customer_name: data.meta.customer_name || '',
-        session_id: data.meta.session_id || ''
-      }
+      acf: acfFields
     });
     
     const postData = {
       status: data.status || 'publish',
-      acf: {
-        main: data.meta.main || '',
-        signature: data.meta.signature || '',
-        age: data.meta.age || '',
-        customer_email: data.meta.customer_email || '',
-        customer_name: data.meta.customer_name || '',
-        session_id: data.meta.session_id || ''
-      }
+      acf: acfFields
     };
+
+    console.log('WordPress update request payload:', {
+      endpoint,
+      postData: JSON.stringify(postData, null, 2)
+    });
 
     const response = await axios.post(
       endpoint,
@@ -282,11 +283,12 @@ async function updatePost(postId, data, config) {
   } catch (error) {
     console.error('Error updating post:', error);
     console.error('Update post error details:', {
+      request_url: error.config?.url,
+      request_data: error.config?.data,
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
-      headers: error.response?.headers,
-      message: error.message,
+      message: error.message
     });
     throw new Error('Failed to update post');
   }
