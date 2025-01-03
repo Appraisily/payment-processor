@@ -105,7 +105,15 @@ async function createPost(postData, config) {
     console.log('WordPress request payload:', {
       title: postData.title,
       status: 'publish',
-      content: postData.content
+      content: postData.content,
+      acf: {
+        main: '',
+        signature: '',
+        age: '',
+        customer_email: postData.meta?.customer_email || '',
+        customer_name: postData.meta?.customer_name || '',
+        session_id: postData.meta?.session_id || ''
+      }
     });
 
     const response = await axios.post(
@@ -113,7 +121,15 @@ async function createPost(postData, config) {
       {
         title: postData.title,
         content: postData.content,
-        status: 'publish'
+        status: 'publish',
+        acf: {
+          main: '',
+          signature: '',
+          age: '',
+          customer_email: postData.meta?.customer_email || '',
+          customer_name: postData.meta?.customer_name || '',
+          session_id: postData.meta?.session_id || ''
+        }
       },
       { headers: getCommonHeaders(config) }
     );
