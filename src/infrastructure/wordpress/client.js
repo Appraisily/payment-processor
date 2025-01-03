@@ -251,7 +251,7 @@ async function updatePost(postId, data, config) {
     
     const postData = {
       status: data.status || 'publish',
-      fields: {
+      acf: {
         main: data.meta.main || '',
         signature: data.meta.signature || '',
         age: data.meta.age || '',
@@ -269,7 +269,7 @@ async function updatePost(postId, data, config) {
 
     console.log('Post updated successfully:', {
       id: postId,
-      meta: postData.meta,
+      acf: postData.acf,
       status: postData.status
     });
 
