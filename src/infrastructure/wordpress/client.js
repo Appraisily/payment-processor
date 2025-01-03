@@ -12,7 +12,6 @@ const ENDPOINTS = {
   MEDIA: '/media'
 };
 
-
 async function getOutboundIP() {
   try {
     const response = await axios.get('https://api.ipify.org?format=json');
@@ -233,10 +232,3 @@ async function updatePost(postId, data, config) {
     throw new Error('Failed to update post');
   }
 }
-
-module.exports = {
-  createPost,
-  uploadMedia,
-  updatePost,
-  getOutboundIP
-};
