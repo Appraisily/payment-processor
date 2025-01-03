@@ -3,8 +3,9 @@ const { createInitialPost, updatePostWithMedia } = require('../utils/wordPressCl
 const { processImagesAndUpdate } = require('./backgroundProcessor');
 const { updateAppraisalStatus } = require('../utils/spreadsheetClient');
 const { logError } = require('../utils/errorLogger');
+const { backupFiles } = require('../utils/storageClient');
 
-async function processAppraisalSubmission(req, config) {
+async function processAppraisalSubmission(req, config, res) {
   const {
     session_id,
     description
@@ -16,25 +17,25 @@ async function processAppraisalSubmission(req, config) {
   // Start backup immediately if files exist
   let backupPromise;
   if (req.files) {
-    console.log('Starting file backup as background operation');
+    console.log('Starting file backup as first operation');
     backupPromise = backupFiles(req.files, config, {
       session_id,
       customer_email: req.body.email || 'unknown@email',
       post_id: 'pending' // We don't have post ID yet
-    }).catch((error) => {
+    }).catch(error => {
       console.error('Backup failed:', error);
-      // Log error but return null to indicate backup failed
-      return logError(config, {
+      // Log but don't throw - we'll continue with other operations
+      logError(config, {
         severity: 'Warning',
         scriptName: 'appraisalProcessor',
         errorCode: 'BACKUP_ERROR',
         errorMessage: error.message,
         stackTrace: error.stack,
-        additionalContext: JSON.stringify({
+        additionalContext: JSON.stringify({ 
           session_id,
           files: Object.keys(req.files)
         })
-      }).then(() => null); // Return null after logging
+      }).catch(console.error);
     });
   }
 
@@ -69,10 +70,19 @@ async function processAppraisalSubmission(req, config) {
       });
       throw new Error('Invalid session ID');
     }
+  } catch (error) {
+    throw error; // Re-throw to be caught by outer try-catch
+  }
 
     // Get customer details, fallback to safe defaults
     const customer_email = stripeSession?.customer_details?.email || req.body.email || 'unknown@email';
     const customer_name = stripeSession?.customer_details?.name || req.body.name || 'Unknown Customer';
+
+    // Send 200 response after validation but before processing
+    res.status(200).json({
+      success: true,
+      message: 'Processing started'
+    });
 
     // Step 2: Create WordPress Post
     try {
@@ -110,14 +120,15 @@ async function processAppraisalSubmission(req, config) {
         stackTrace: error.stack,
         additionalContext: JSON.stringify({ session_id, customer_email })
       });
-      throw error; // Propagate error to ensure proper handling
+      // Continue with other operations instead of throwing
+      console.log('Continuing despite WordPress error');
     }
 
     // Step 3: Process Images
     if (wordpressPost && req.files) {
       processImagesAndUpdate({
         files: req.files,
-        backupPromise: backupPromise || Promise.resolve(null), // Handle case where backup failed
+        backupPromise, // Pass the existing backup promise
         postId: wordpressPost.id,
         config,
         metadata: {

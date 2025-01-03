@@ -10,8 +10,11 @@ async function processImagesAndUpdate({ files, postId, config, backupPromise, me
     console.log('Starting background processing for post:', postId);
 
     // If we have an existing backup promise, wait for it
-    const backupUrls = await backupPromise;
-    console.log('Backup status:', backupUrls ? 'completed' : 'failed or skipped');
+    let backupUrls;
+    if (backupPromise) {
+      console.log('Waiting for existing backup to complete');
+      backupUrls = await backupPromise;
+    }
 
     // Process and optimize images
     const processedImages = await processImages(files);

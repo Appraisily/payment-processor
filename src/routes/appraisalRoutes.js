@@ -1,22 +1,19 @@
 const express = require('express');
 const multer = require('multer');
-const { processAppraisalSubmission } = require('../services/appraisalProcessor');
-const { validateAppraisalRequest } = require('../utils/validators');
-const { logError } = require('../utils/errorLogger');
-const { backupFiles } = require('../utils/storageClient');
+const AppraisalService = require('../domain/appraisal/service');
+const { logError } = require('../utils/error/logger'); 
 
 function setupAppraisalRoutes(app, config) {
   const router = express.Router();
+  const appraisalService = new AppraisalService(config);
 
-  // Configure multer for file uploads
   const upload = multer({
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB limit
-      files: 3 // Maximum 3 files (main, signature, age)
+      fileSize: 10 * 1024 * 1024,
+      files: 3
     }
   });
 
-  // Define the fields for multipart form data
   const uploadFields = [
     { name: 'main', maxCount: 1 },
     { name: 'signature', maxCount: 1 },
@@ -24,72 +21,95 @@ function setupAppraisalRoutes(app, config) {
   ];
 
   router.post('/', upload.fields(uploadFields), async (req, res) => {
-    console.log('Received appraisal submission request');
+    console.log('Received appraisal submission request with body:', {
+      ...req.body,
+      files: req.files ? Object.keys(req.files) : []
+    });
 
-    try {
-      // Validate request parameters
-      const validationError = validateAppraisalRequest(req);
-      if (validationError) {
-        return res.status(400).json({
-          success: false,
-          error: validationError
+    // Validate required fields
+    if (!req.body.session_id) {
+      console.error('Missing required session_id');
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required session_id'
+      });
+    }
+
+    // Get customer info from Stripe session if not provided
+    if (!req.body.customer_email || !req.body.customer_name) {
+      try {
+        const stripe = require('stripe')(config.STRIPE_SECRET_KEY_LIVE);
+        const session = await stripe.checkout.sessions.retrieve(
+          req.body.session_id,
+          { expand: ['customer_details'] }
+        );
+        
+        console.log('Retrieved Stripe session details:', {
+          session_id: session.id,
+          customer_email: session.customer_details?.email,
+          customer_name: session.customer_details?.name
         });
+
+        // Always use Stripe session data for customer details
+        req.body.customer_email = session.customer_details?.email;
+        req.body.customer_name = session.customer_details?.name;
+      } catch (error) {
+        console.error('Error retrieving Stripe session:', error);
       }
+    }
 
-      // Send immediate success response
-      res.status(200).json({
-        success: true,
-        message: 'Processing started'
-      });
+    const submission = {
+      session_id: req.body.session_id,
+      description: req.body.description,
+      files: req.files,
+      customer_email: req.body.customer_email,
+      customer_name: req.body.customer_name,
+      payment_id: req.body.payment_id
+    };
 
-      // Process the submission
-      processAppraisalSubmission(req, config).catch(error => {
-        console.error('Background processing error:', error);
-        logError(config, {
-          severity: 'Error',
-          scriptName: 'appraisalRoutes',
-          errorCode: error.code || 'BACKGROUND_PROCESSING_ERROR',
-          errorMessage: error.message,
-          stackTrace: error.stack,
-          userId: req.body.customer_email,
-          additionalContext: JSON.stringify({
-            session_id: req.body.session_id,
-            hasFiles: !!req.files
-          })
-        }).catch(console.error);
-      });
+    console.log('Processing submission with:', {
+      session_id: submission.session_id,
+      customer_email: submission.customer_email,
+      customer_name: submission.customer_name,
+      hasFiles: !!submission.files,
+      fileTypes: submission.files ? Object.keys(submission.files) : []
+    });
 
+    // Send immediate success response
+    res.status(200).json({
+      success: true,
+      message: 'Submission received and processing started',
+      session_id: submission.session_id
+    });
+
+    // Process submission in background
+    try {
+      console.log('Starting background processing for session:', submission.session_id);
+      await appraisalService.processSubmission(submission);
+      console.log('Background processing completed successfully');
     } catch (error) {
       console.error('Error processing appraisal submission:', error);
-
-      // Log the error
       await logError(config, {
-        timestamp: new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+        timestamp: new Date().toISOString(),
         severity: 'Error',
         scriptName: 'appraisalRoutes',
         errorCode: error.code || 'APPRAISAL_SUBMISSION_ERROR',
         errorMessage: error.message,
         stackTrace: error.stack,
         userId: req.body.customer_email,
-        requestId: req.headers['x-request-id'] || '',
-        environment: 'Production',
         endpoint: '/api/appraisals',
         additionalContext: JSON.stringify({
           session_id: req.body.session_id,
-          hasMainImage: !!req.files?.main
-        }),
-        resolutionStatus: 'Open'
-      });
-
-      // Send error response
-      res.status(500).json({
-        success: false,
-        error: error.message
+          hasFiles: !!req.files,
+          fileTypes: req.files ? Object.keys(req.files) : [],
+          error: error.response?.data || error.message,
+          status: error.response?.status,
+          stack: error.stack
+        })
       });
     }
   });
 
-  // Mount the router
   app.use('/api/appraisals', router);
 }
 
