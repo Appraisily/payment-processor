@@ -251,19 +251,15 @@ async function updatePost(postId, data, config) {
     
     const postData = {
       status: data.status || 'publish',
-      acf: {}
+      fields: {
+        main: data.meta.main || '',
+        signature: data.meta.signature || '',
+        age: data.meta.age || '',
+        customer_email: data.meta.customer_email || '',
+        customer_name: data.meta.customer_name || '',
+        session_id: data.meta.session_id || ''
+      }
     };
-
-    // Add ACF fields if meta data is provided
-    if (data.meta) {
-      // Update ACF fields directly
-      postData.acf.main = data.meta.main || '';
-      postData.acf.signature = data.meta.signature || '';
-      postData.acf.age = data.meta.age || '';
-      postData.acf.customer_email = data.meta.customer_email || '';
-      postData.acf.customer_name = data.meta.customer_name || '';
-      postData.acf.session_id = data.meta.session_id || '';
-    }
 
     const response = await axios.post(
       endpoint,
