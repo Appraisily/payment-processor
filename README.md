@@ -44,41 +44,25 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 
 ```
 ├── src/
-│   ├── domain/                   # Domain logic and business rules
-│   │   ├── appraisal/           # Appraisal domain
-│   │   │   ├── repository.js    # Appraisal data operations
-│   │   │   ├── service.js       # Appraisal business logic
-│   │   │   ├── types.js         # Type definitions
-│   │   │   └── validator.js     # Input validation
-│   │   └── payment/             # Payment domain
-│   │       ├── repository.js    # Payment data operations
-│   │       ├── service.js       # Payment business logic
-│   │       ├── types.js         # Type definitions
-│   │       └── validator.js     # Input validation
-│   ├── infrastructure/          # External services integration
-│   │   ├── email/              # Email service
-│   │   │   └── sendgrid.js     # SendGrid integration
-│   │   ├── image/              # Image processing
-│   │   │   └── processor.js    # Image optimization
-│   │   ├── sheets/             # Google Sheets
-│   │   │   ├── client.js       # Sheets API client
-│   │   │   └── logger.js       # Error logging to sheets
-│   │   ├── storage/            # Cloud storage
-│   │   │   └── gcs.js         # Google Cloud Storage
-│   │   ├── stripe/             # Payment processing
-│   │   │   └── client.js       # Stripe API client
-│   │   └── wordpress/          # CMS integration
-│   │       └── client.js       # WordPress API client
-│   ├── routes/                 # API routes
-│   │   ├── appraisalRoutes.js  # Appraisal endpoints
-│   │   ├── stripeRoutes.js     # Stripe endpoints
-│   │   └── webhookRoutes.js    # Webhook handlers
-│   ├── utils/                  # Shared utilities
-│   │   └── error/             # Error handling
-│   │       └── logger.js      # Error logging
-│   ├── config.js              # Configuration management
-│   └── index.js              # Application entry point
-└── Dockerfile                # Container configuration
+│   ├── routes/
+│   │   ├── appraisalRoutes.js    # Appraisal submission endpoints
+│   │   ├── stripeRoutes.js       # Stripe API endpoints
+│   │   └── webhookRoutes.js      # Webhook handling
+│   ├── services/
+│   │   ├── appraisalProcessor.js # Appraisal processing logic
+│   │   ├── backgroundProcessor.js # Async processing
+│   │   ├── checkoutProcessor.js  # Checkout session handling
+│   │   └── webhookHandler.js     # Webhook processing
+│   └── utils/
+│       ├── emailService.js       # Email handling
+│       ├── errorLogger.js        # Error logging
+│       ├── imageProcessor.js     # Image optimization
+│       ├── spreadsheetClient.js  # Google Sheets operations
+│       ├── storageClient.js      # GCS operations
+│       ├── validators.js         # Input validation
+│       └── wordPressClient.js    # WordPress API integration
+├── config.js                     # Configuration management
+└── index.js                     # Application entry point
 ```
 
 ## Data Structures
@@ -135,22 +119,7 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 - POST `/api/appraisals`: Handle appraisal submissions
   - Multipart form data
   - Supports image uploads (main, signature, age)
-  - Maximum file size: 10MB per file
-  
-  Processing Steps:
-  1. Immediate 200 response sent to client
-  2. Background processing begins:
-     - Backup submitted files to Google Cloud Storage
-     - Create WordPress post with appraisal details
-     - Process and optimize images
-     - Upload optimized images to WordPress media library
-     - Update WordPress post with media IDs
-     - Update ACF fields, customer_name, customer_email and session_id 
-     - Record submission in Google Sheets
-     - Notify appraisers backend service
-
-  Each step is logged for monitoring and debugging purposes.
-  If any step fails, the error is logged but doesn't affect the client response.
+  - Maximum file size: 10MB
 
 ## Configuration
 
