@@ -56,15 +56,6 @@ async function verifyPostInitialization(postId, config) {
   return false;
 }
 
-// Export ENDPOINTS for use in other modules
-module.exports = {
-  createPost,
-  uploadMedia,
-  updatePost,
-  verifyPostInitialization,
-  ENDPOINTS
-};
-
 async function getOutboundIP() {
   try {
     const response = await axios.get('https://api.ipify.org?format=json');
@@ -169,7 +160,6 @@ async function createPost(postData, config) {
     } else {
       throw new Error(`Failed to create WordPress post: ${error.message}`);
     }
-    throw new Error('Failed to create WordPress post');
   }
 }
 
@@ -291,7 +281,7 @@ async function updatePost(postId, data, config) {
     return response.data;
   } catch (error) {
     console.error('Error updating post:', error);
-    console.error('Error updating post - Full response:', {
+    console.error('Update post error details:', {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
