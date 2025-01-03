@@ -106,21 +106,27 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePost(postId, data, config) {
   try {
-    console.log('Updating post:', { postId, fields: Object.keys(data) });
+    const postData = {
+      status: data.status || 'publish',
+      acf: {
+        main: data.meta?.main || '',
+        signature: data.meta?.signature || '',
+        age: data.meta?.age || '',
+        customer_email: data.meta?.customer_email || '',
+        customer_name: data.meta?.customer_name || '',
+        session_id: data.meta?.session_id || ''
+      }
+    };
+
+    console.log('Updating post with data:', {
+      postId,
+      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
+      payload: JSON.stringify(postData, null, 2)
+    });
 
     const response = await axios.post(
       `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-      {
-        status: data.status || 'publish',
-        acf: {
-          main: data.meta?.main || '',
-          signature: data.meta?.signature || '',
-          age: data.meta?.age || '',
-          customer_email: data.meta?.customer_email || '',
-          customer_name: data.meta?.customer_name || '',
-          session_id: data.meta?.session_id || ''
-        }
-      },
+      postData,
       { headers: getCommonHeaders(config) }
     );
 
