@@ -114,6 +114,18 @@ class AppraisalRepository {
               session_id
             });
             console.log('Updated WordPress post with media');
+
+            // Update WordPress media URLs in sheets
+            try {
+              await this.sheetsClient.updateWordPressMediaUrls(session_id, {
+                main: uploadedMedia.main?.url || '',
+                signature: uploadedMedia.signature?.url || '',
+                age: uploadedMedia.age?.url || ''
+              });
+            } catch (urlsError) {
+              console.error('Failed to update WordPress media URLs in sheets:', urlsError);
+              // Continue execution despite URLs update error
+            }
           } catch (mediaError) {
             console.error('Failed to update WordPress post with media:', mediaError);
             // Continue execution despite media update error
@@ -155,6 +167,16 @@ class AppraisalRepository {
 
       // Wait for backup to complete
       const backupUrls = await backupPromise;
+
+      // Update GCS URL in sheets if backup was successful
+      if (backupUrls?.main) {
+        try {
+          await this.sheetsClient.updateGCSUrl(session_id, backupUrls.main);
+        } catch (gcsError) {
+          console.error('Failed to update GCS URL in sheets:', gcsError);
+          // Continue execution despite GCS URL update error
+        }
+      }
 
       return {
         id: post?.id || null,

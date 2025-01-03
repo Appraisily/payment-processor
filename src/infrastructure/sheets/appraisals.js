@@ -151,28 +151,120 @@ class AppraisalSheetsClient {
       }
 
       const rowNumber = rowIndex + 1;
-      const batchUpdateRequest = {
+      await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
         resource: {
           valueInputOption: 'USER_ENTERED',
-          data: [{
-            range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
-            values: [['PROCESSING', wordpressEditUrl]]
-          }]
+          data: [
+            {
+              range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}`,
+              values: [['GCS SAVED']]
+            },
+            {
+              range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!G${rowNumber}`,
+              values: [[wordpressEditUrl]]
+            }
+          ]
         }
-      };
-
-      await sheets.spreadsheets.values.batchUpdate(batchUpdateRequest);
+      });
 
       console.log('Updated submission status in sheets:', {
         session_id,
-        status: 'PROCESSING',
+        status: 'GCS SAVED',
         wordpressEditUrl,
         row: rowNumber
       });
     } catch (error) {
       console.error('Error updating submission status:', error);
       throw new Error('Failed to update submission status in Google Sheets');
+    }
+  }
+
+  async updateWordPressMediaUrls(session_id, mediaUrls) {
+    try {
+      const auth = await this.getAuthClient();
+      const sheets = google.sheets({ version: 'v4', auth });
+
+      // Find the row with matching session_id
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+        range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!C:C`
+      });
+
+      const rows = response.data.values || [];
+      const rowIndex = rows.findIndex(row => row[0] === session_id);
+
+      if (rowIndex === -1) {
+        console.warn('Session ID not found in sheets:', session_id);
+        return;
+      }
+
+      const rowNumber = rowIndex + 1;
+      const urlsJson = JSON.stringify({
+        main: mediaUrls.main || '',
+        age: mediaUrls.age || '',
+        signature: mediaUrls.signature || ''
+      });
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+        range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!O${rowNumber}`,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [[urlsJson]]
+        }
+      });
+
+      console.log('Updated WordPress media URLs in sheets:', {
+        session_id,
+        urls: urlsJson,
+        row: rowNumber
+      });
+    } catch (error) {
+      console.error('Error updating WordPress media URLs:', error);
+      // Don't throw error to avoid interrupting the main flow
+      console.log('Continuing despite WordPress media URLs update error');
+    }
+  }
+
+  async updateGCSUrl(session_id, gcsUrl) {
+    try {
+      const auth = await this.getAuthClient();
+      const sheets = google.sheets({ version: 'v4', auth });
+
+      // Find the row with matching session_id
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+        range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!C:C`
+      });
+
+      const rows = response.data.values || [];
+      const rowIndex = rows.findIndex(row => row[0] === session_id);
+
+      if (rowIndex === -1) {
+        console.warn('Session ID not found in sheets:', session_id);
+        return;
+      }
+
+      const rowNumber = rowIndex + 1;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+        range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!Q${rowNumber}`,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [[gcsUrl]]
+        }
+      });
+
+      console.log('Updated GCS URL in sheets:', {
+        session_id,
+        gcsUrl,
+        row: rowNumber
+      });
+    } catch (error) {
+      console.error('Error updating GCS URL:', error);
+      // Don't throw error to avoid interrupting the main flow
+      console.log('Continuing despite GCS URL update error');
     }
   }
 }
