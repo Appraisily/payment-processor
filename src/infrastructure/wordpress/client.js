@@ -102,52 +102,48 @@ async function createPost(postData, config) {
       status: 'publish'
     });
 
-    console.log('WordPress request payload:', {
-      title: postData.title,
-      status: 'publish',
-      content: postData.content,
-      acf: {
-        main: '',
-        signature: '',
-        age: '',
-        customer_email: postData.meta?.customer_email || '',
-        customer_name: postData.meta?.customer_name || '',
-        session_id: postData.meta?.session_id || ''
-      }
-    });
-
-    const response = await axios.post(
+    // First create the post without ACF fields
+    const initialResponse = await axios.post(
       endpoint,
       {
         title: postData.title,
         content: postData.content,
-        status: 'publish',
-        acf: {
-          main: '',
-          signature: '',
-          age: '',
-          customer_email: postData.meta?.customer_email || '',
-          customer_name: postData.meta?.customer_name || '',
-          session_id: postData.meta?.session_id || ''
-        }
+        status: 'publish'
       },
       { headers: getCommonHeaders(config) }
     );
 
-    // Validate response data
-    if (!response.data || !response.data.id) {
+    // Validate initial response
+    if (!initialResponse.data || !initialResponse.data.id) {
       throw new Error('Invalid response from WordPress: Missing post ID');
     }
 
-    const postId = response.data.id;
+    const postId = initialResponse.data.id;
     
     console.log('WordPress post created successfully:', {
-      post_id: response.data.id,
-      status: response.data.status,
-      type: response.data.type,
-      link: response.data.link,
-      modified: response.data.modified
+      post_id: postId,
+      status: initialResponse.data.status,
+      type: initialResponse.data.type,
+      link: initialResponse.data.link,
+      modified: initialResponse.data.modified
     });
+    }
+
+    // Wait for post initialization
+    await verifyPostInitialization(postId, config);
+    
+    // Now update with ACF fields
+    if (postData.meta) {
+      console.log('Updating post with ACF fields:', {
+        post_id: postId,
+        meta: postData.meta
+      });
+
+      await updatePost(postId, {
+        meta: postData.meta,
+        status: 'publish'
+      }, config);
+    }
 
     return {
       id: postId,
@@ -252,9 +248,6 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePost(postId, data, config) {
   try {
-    // Verify post initialization before updating
-    await verifyPostInitialization(postId, config);
-    
     const outboundIP = await getOutboundIP();
     const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`;
 
