@@ -26,6 +26,65 @@ function setupStripeRoutes(app, config) {
     next();
   };
 
+  router.get('/expandedsession/:sessionId', verifySharedSecret, async (req, res) => {
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+
+    try {
+      const session = await stripeClient.retrieveSession(sessionId, 'live');
+      
+      // Parse full name into first and last name
+      const fullName = session.customer_details?.name || '';
+      const nameParts = fullName.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      // Format response with dataLayer structure
+      const response = {
+        event: 'conversion',
+        transactionTotal: session.amount_total ? session.amount_total / 100 : 0,
+        transactionId: session.id,
+        transactionCurrency: session.currency?.toUpperCase() || '',
+        userEmail: session.customer_details?.email || '',
+        userPhone: session.customer_details?.phone || '',
+        userFirstName: firstName,
+        userLastName: lastName
+      };
+      
+      console.log('Retrieved expanded Stripe session:', {
+        id: session.id,
+        email: session.customer_details?.email,
+        status: session.payment_status
+      });
+      
+      res.json(response);
+    } catch (error) {
+      await logError(config, {
+        timestamp: new Date().toISOString(),
+        severity: 'Error',
+        scriptName: 'stripeRoutes',
+        errorCode: error.code || 'UnknownError',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        endpoint: req.originalUrl,
+        additionalContext: JSON.stringify({ 
+          sessionId,
+          headers: req.headers,
+          stripeError: error.raw 
+        })
+      });
+
+      if (error.type === 'StripeInvalidRequestError') {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   router.get('/session/:sessionId', verifySharedSecret, async (req, res) => {
     const { sessionId } = req.params;
 

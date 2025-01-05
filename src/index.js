@@ -3,6 +3,7 @@ const cors = require('cors');
 const setupWebhookRoutes = require('./routes/webhookRoutes');
 const setupStripeRoutes = require('./routes/stripeRoutes');
 const { setupAppraisalRoutes } = require('./routes/appraisalRoutes');
+const setupHealthRoutes = require('./routes/healthRoutes');
 const loadConfig = require('./config');
 
 async function initializeApp() {
@@ -41,6 +42,7 @@ async function initializeApp() {
     setupWebhookRoutes(app, config);
     setupStripeRoutes(app, config);
     setupAppraisalRoutes(app, config);
+    setupHealthRoutes(app, config);
 
     // Health check endpoint
     app.get('/', (req, res) => {
