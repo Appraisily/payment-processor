@@ -106,45 +106,32 @@ async function uploadMedia(buffer, filename, config) {
 
 async function updatePost(postId, data, config) {
   try {
-    // Update status first
     await updatePostStatus(postId, data.status || 'publish', config);
 
-    // Update each ACF field individually
-    const acfFields = {
-      main: data.meta?.main || '',
-      signature: data.meta?.signature || '',
-      age: data.meta?.age || '',
-      customer_email: data.meta?.customer_email || '',
-      customer_name: data.meta?.customer_name || '',
-      session_id: data.meta?.session_id || ''
-    };
+    // Update all ACF fields in a single request
+    console.log('Updating all ACF fields:', data.meta);
+    
+    const response = await axios.post(
+      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
+      {
+        acf: {
+          main: data.meta?.main || '',
+          signature: data.meta?.signature || '',
+          age: data.meta?.age || '',
+          customer_email: data.meta?.customer_email || '',
+          customer_name: data.meta?.customer_name || '',
+          session_id: data.meta?.session_id || ''
+        }
+      },
+      { headers: getCommonHeaders(config) }
+    );
 
-    for (const [field, value] of Object.entries(acfFields)) {
-      try {
-        console.log(`Updating ACF field "${field}":`, { value });
-        
-        const fieldData = {
-          acf: {
-            [field]: value
-          }
-        };
-
-        const response = await axios.post(
-          `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-          fieldData,
-          { headers: getCommonHeaders(config) }
-        );
-
-        console.log(`Field "${field}" updated successfully`);
-      } catch (fieldError) {
-        console.error(`Failed to update field "${field}":`, {
-          error: fieldError.message,
-          status: fieldError.response?.status,
-          data: fieldError.response?.data
-        });
-        // Continue with other fields even if one fails
-      }
-    }
+    console.log('All ACF fields updated successfully:', {
+      postId,
+      main: data.meta?.main,
+      signature: data.meta?.signature,
+      age: data.meta?.age
+    });
 
     return { id: postId, status: 'updated' };
 
