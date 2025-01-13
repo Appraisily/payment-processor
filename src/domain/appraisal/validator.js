@@ -22,7 +22,7 @@ function validateAppraisalSubmission(submission) {
     return 'Missing required field: session_id';
   }
 
-  if (!/^[a-zA-Z0-9_\-]+$/.test(session_id)) {
+  if (!/^[\w\-\s]+$/.test(session_id)) {
     return 'Invalid session_id format';
   }
 
