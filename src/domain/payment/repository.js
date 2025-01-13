@@ -68,7 +68,7 @@ class PaymentRepository {
       insertDataOption: 'INSERT_ROWS',
       resource: {
         values: [[
-          new Date(session.created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }),
+          new Date(session.created * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
           productDetails.productName,
           session.id,
           session.customer_details?.email || '',

@@ -100,7 +100,7 @@ class AppraisalSheetsClient {
           insertDataOption: 'INSERT_ROWS',
           resource: {
             values: [[
-              new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+              new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid', hour12: false }),
               data.appraisalType || 'Regular',
               data.session_id,
               data.customer_email,
