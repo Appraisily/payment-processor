@@ -13,7 +13,7 @@ class AppraisalRepository {
   }
 
   async createAppraisal(submission) {
-    const { session_id, images, customer_email, customer_name } = submission;
+    const { session_id, images, customer_email, customer_name, appraisal_type } = submission;
     let uploadedMedia = {};
     let post = null;
     let backupPromise = null;
@@ -52,6 +52,7 @@ class AppraisalRepository {
               session_id,
               customer_email,
               customer_name,
+              appraisaltype: appraisal_type || 'Regular', // Default to Regular if not specified
               main: '',
               signature: '',
               age: ''
@@ -219,6 +220,7 @@ class AppraisalRepository {
   async updatePostMedia(postId, data) {
     return await updatePost(postId, {
       meta: {
+        appraisaltype: data.appraisal_type || 'Regular',
         // Media IDs
         main: data.media.main?.id || '',
         signature: data.media.signature?.id || '',
