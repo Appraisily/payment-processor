@@ -56,10 +56,15 @@ class AppraisalSheetsClient {
         // Update status and WordPress URL
         await sheets.spreadsheets.values.update({
           spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
-          range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
+          range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!D:G${rowNumber}`,
           valueInputOption: 'USER_ENTERED',
           resource: {
-            values: [['SUBMITTED', data.wordpressEditUrl || '']]
+            values: [[
+              data.customer_email,
+              data.customer_name,
+              'Pending',
+              data.wordpressEditUrl || ''
+            ]]
           }
         });
 

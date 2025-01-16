@@ -73,7 +73,7 @@ class PaymentRepository {
           session.id,
           session.customer_details?.email || '',
           session.customer_details?.name || '',
-          'Paid',
+          'Pending',
         ]],
       },
     });
