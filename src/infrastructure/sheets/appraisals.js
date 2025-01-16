@@ -105,7 +105,7 @@ class AppraisalSheetsClient {
               data.session_id,
               data.customer_email,
               data.customer_name,
-              'SUBMITTED',
+              'Pending',
               data.wordpressEditUrl || '',
               '',  // Column H
               data.description || '' // Column I
@@ -158,7 +158,7 @@ class AppraisalSheetsClient {
           data: [
             {
               range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}`,
-              values: [['GCS SAVED']]
+              values: [['Pending']]
             },
             {
               range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!G${rowNumber}`,
