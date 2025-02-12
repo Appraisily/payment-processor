@@ -1,13 +1,26 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
+// IMPORTANT NOTE: WordPress API URL handling
+// The WORDPRESS_API_URL from config includes '/wp-json/wp/v2'
+// ✓ Correct: config.WORDPRESS_API_URL + '/appraisals'
+// ✗ Wrong: config.WORDPRESS_API_URL + '/wp/v2/appraisals'
+// This prevents the common error of duplicate 'wp/v2' in the path
+
 const ENDPOINTS = {
   APPRAISALS: '/appraisals',
   MEDIA: '/media'
 };
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000;
+async function getOutboundIP() {
+  try {
+    const response = await axios.get('https://api.ipify.org?format=json');
+    return response.data.ip;
+  } catch (error) {
+    console.error('Error getting outbound IP:', error);
+    return 'Unknown';
+  }
+}
 
 function getAuthHeader(config) {
   const credentials = Buffer.from(`${config.WORDPRESS_USERNAME}:${config.WORDPRESS_APP_PASSWORD}`).toString('base64');
@@ -24,54 +37,101 @@ function getCommonHeaders(config) {
 
 async function createPost(postData, config) {
   try {
-    console.log('Creating WordPress post:', {
+    const outboundIP = await getOutboundIP();
+    const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`;
+    
+    console.log('Starting WordPress post creation:', {
+      outboundIP,
       title: postData.title,
-      status: 'publish'
+      url: endpoint,
+      meta: postData.meta,
+      content_length: postData.content.length,
+      status: postData.status
+    });
+
+    console.log('WordPress request payload:', {
+      title: postData.title,
+      status: postData.status,
+      content: postData.content
     });
 
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`,
+      endpoint,
       {
         title: postData.title,
         content: postData.content,
-        status: 'publish',
-        meta: postData.meta
+        status: postData.status
       },
       { headers: getCommonHeaders(config) }
     );
 
-    if (!response.data?.id) {
-      throw new Error('Invalid response: Missing post ID');
+    // Validate response data
+    if (!response.data || !response.data.id) {
+      throw new Error('Invalid response from WordPress: Missing post ID');
     }
 
-    console.log('Post created successfully:', {
-      id: response.data.id,
-      status: response.data.status
+    const postId = response.data.id;
+    
+    console.log('WordPress post created successfully:', {
+      post_id: response.data.id,
+      status: response.data.status,
+      type: response.data.type,
+      link: response.data.link,
+      modified: response.data.modified
     });
 
     return {
-      id: response.data.id,
-      editUrl: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${response.data.id}&action=edit`
+      id: postId,
+      editUrl: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${postId}&action=edit`
     };
-
   } catch (error) {
-    console.error('Post creation failed:', {
-      error: error.message,
+    console.error('Error creating WordPress post:', {
+      error_name: error.name,
+      error_message: error.message,
       status: error.response?.status,
-      data: error.response?.data
+      response_data: error.response?.data,
+      request_url: error.config?.url,
+      headers: {
+        ...getCommonHeaders(config),
+        Authorization: '***' // Hide sensitive data
+      }
     });
-    throw error;
+
+    // Throw specific error messages based on response
+    if (error.response?.status === 404) {
+      throw new Error('WordPress API endpoint not found. Check API URL configuration.');
+    } else if (error.response?.status === 401) {
+      throw new Error('WordPress authentication failed. Check credentials.');
+    } else {
+      throw new Error(`Failed to create WordPress post: ${error.message}`);
+    }
+    throw new Error('Failed to create WordPress post');
   }
 }
 
 async function uploadMedia(buffer, filename, config) {
   try {
-    console.log('Uploading media:', { filename });
+    const outboundIP = await getOutboundIP();
+    console.log('Starting WordPress media upload:', {
+      outboundIP,
+      filename,
+      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.MEDIA}`,
+      size: buffer.length,
+      content_type: 'image/jpeg'
+    });
 
     const form = new FormData();
+    console.log('Creating form data for media upload');
     form.append('file', buffer, {
-      filename,
+      filename: filename,
       contentType: 'image/jpeg'
+    });
+
+    console.log('Media upload request configuration:', {
+      endpoint: `${config.WORDPRESS_API_URL}${ENDPOINTS.MEDIA}`,
+      filename,
+      content_length: buffer.length,
+      form_headers: Object.keys(form.getHeaders())
     });
 
     const response = await axios.post(
@@ -85,135 +145,90 @@ async function uploadMedia(buffer, filename, config) {
       }
     );
 
-    console.log('Media uploaded:', {
+    console.log('WordPress media upload successful:', {
       id: response.data.id,
-      url: response.data.source_url
+      url: response.data.source_url,
+      title: response.data.title?.rendered,
+      mime_type: response.data.mime_type,
+      media_type: response.data.media_type,
+      alt_text: response.data.alt_text,
+      status: response.data.status
     });
 
     return {
       id: response.data.id,
       url: response.data.source_url
     };
-
   } catch (error) {
-    console.error('Media upload failed:', {
-      error: error.message,
-      status: error.response?.status
+    console.error('WordPress media upload error:', {
+      error_name: error.name,
+      error_message: error.message,
+      status: error.response?.status,
+      response_data: error.response?.data,
+      headers_sent: error.config?.headers,
+      request_url: error.config?.url,
+      filename,
+      buffer_size: buffer.length
     });
-    throw error;
+
+    if (error.response?.status === 413) {
+      console.error('File size too large for WordPress server');
+    } else if (error.response?.status === 404) {
+      console.error('WordPress media endpoint not found - check API URL');
+    }
+
+    throw new Error('Failed to upload media');
   }
 }
 
 async function updatePost(postId, data, config) {
   try {
-    await updatePostStatus(postId, data.status || 'publish', config);
-    const acfFields = {};
-
-    // Only include non-empty fields
-    if (data.meta?.main) acfFields.main = data.meta.main;
-    if (data.meta?.signature) acfFields.signature = data.meta.signature;
-    if (data.meta?.age) acfFields.age = data.meta.age;
-    if (data.meta?.customer_email) acfFields.customer_email = data.meta.customer_email;
-    if (data.meta?.customer_name) acfFields.customer_name = data.meta.customer_name;
-    if (data.meta?.session_id) acfFields.session_id = data.meta.session_id;
-
-    // Only update if there are fields to update
-    if (Object.keys(acfFields).length > 0) {
-      console.log('Updating ACF fields:', acfFields);
+    const outboundIP = await getOutboundIP();
+    const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`;
     
-      const response = await axios.post(
-        `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-        { acf: acfFields },
-        { headers: getCommonHeaders(config) }
-      );
-
-      console.log('ACF fields updated successfully:', {
-        postId,
-        updatedFields: Object.keys(acfFields)
-      });
-    } else {
-      console.log('No ACF fields to update');
-    }
-
-    return { id: postId, status: 'updated' };
-
-  } catch (error) {
-    console.error('Post update failed:', {
-      error: error.message,
+    console.log('Updating WordPress post:', {
+      outboundIP,
       postId,
-      status: error.response?.status,
-      data: error.response?.data
+      url: endpoint,
+      fields: Object.keys(data.meta)
     });
-    throw error;
-  }
-}
-
-async function updatePostStatus(postId, status, config) {
-  try {
-    console.log('Updating post status:', { postId, status });
     
+    const postData = {
+      status: data.status || 'publish',
+      acf: {
+        // Media fields
+        main: data.meta.main || '',
+        signature: data.meta.signature || '',
+        age: data.meta.age || '',
+        // Customer fields
+        customer_name: data.meta.customer_name || '',
+        customer_email: data.meta.customer_email || '',
+        session_id: data.meta.session_id || ''
+      }
+    };
+
     const response = await axios.post(
-      `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-      { status },
+      endpoint,
+      postData,
       { headers: getCommonHeaders(config) }
     );
 
-    console.log('Status updated successfully:', {
+    console.log('Post updated successfully:', {
       id: postId,
-      status: response.data.status
+      meta: postData.meta,
+      status: postData.status
     });
 
     return response.data;
   } catch (error) {
-    console.error('Status update failed:', {
-      error: error.message,
+    console.error('Error updating post:', error);
+    console.error('Update post error details:', {
       status: error.response?.status,
-      data: error.response?.data
+      data: error.response?.data,
+      message: error.message,
+      postId,
+      url: `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`
     });
-    throw error;
+    throw new Error('Failed to update post');
   }
 }
-
-async function verifyPostInitialization(postId, config) {
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      console.log(`Verifying post (attempt ${attempt}/${MAX_RETRIES}):`, { postId });
-
-      const response = await axios.get(
-        `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
-        { headers: getCommonHeaders(config) }
-      );
-
-      if (response.data?.acf !== undefined) {
-        console.log('Post verified:', { postId, attempt });
-        return true;
-      }
-
-      console.log('Post not ready:', { postId, attempt });
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-
-    } catch (error) {
-      console.error('Verification failed:', {
-        error: error.message,
-        attempt,
-        postId
-      });
-
-      if (attempt === MAX_RETRIES) {
-        throw error;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-    }
-  }
-
-  return false;
-}
-
-module.exports = {
-  createPost,
-  uploadMedia,
-  updatePost,
-  verifyPostInitialization,
-  ENDPOINTS
-};

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Complete Your Appraisal Details</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f9fafb;
+      color: #1f2937;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      font-size: 0;
+    }
+    
+    .header-content {
+      display: inline-block;
+      text-align: center;
+    }
+    
+    .logo {
+      width: 40px;
+      height: 40px;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    
+    .company-name {
+      display: inline-block;
+      vertical-align: middle;
+      font-size: 24px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+    
+    .content {
+      color: #4b5563;
+      font-size: 16px;
+      padding: 0 8px;
+    }
+    
+    .content p {
+      margin-bottom: 24px;
+    }
+    
+    .session-id {
+      background-color: #f9fafb;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 24px 0;
+      text-align: center;
+    }
+    
+    .session-id strong {
+      color: #1f2937;
+      font-family: monospace;
+      font-size: 18px;
+      letter-spacing: 1px;
+    }
+    
+    .button-container {
+      text-align: center;
+      margin: 32px 0;
+    }
+    
+    .button {
+      display: inline-block;
+      background-color: #007bff !important;
+      color: #ffffff !important;
+      padding: 16px 32px;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+      mso-hide: all;
+    }
+    
+    .note {
+      background-color: #fff8dc;
+      border-left: 4px solid #ffd700;
+      padding: 16px;
+      margin: 24px 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+    }
+    
+    .signature {
+      margin: 32px 0;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 14px;
+      color: #4b5563;
+      text-align: center;
+    }
+    
+    @media only screen and (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+      
+      .container {
+        padding: 24px;
+      }
+      
+      .button {
+        display: block;
+        padding: 16px 24px;
+      }
+      
+      .logo {
+        width: 35px;
+        height: 35px;
+      }
+      
+      .company-name {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+      <tr>
+        <td align="center" style="padding-bottom: 32px;">
+          <table border="0" cellspacing="0" cellpadding="0">
+            <tr>
+              <td>
+                <img src="http://cdn.mcauto-images-production.sendgrid.net/304ac75ef1d5c007/8aeb2689-2b5b-402d-a6f3-6521621e123a/300x300.png" alt="Appraisily Logo" class="logo" width="40" height="40" style="vertical-align: middle;">
+              </td>
+              <td style="padding-left: 10px;">
+                <span class="company-name" style="vertical-align: middle;">Appraisily</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <div class="content">
+      <p>Hi {{customer_name}},</p>
+
+      <p>Thank you for completing your payment! We're excited to begin the appraisal process for your art pieces and antiques.</p>
+
+      <div class="session-id">
+        Your Session ID: <strong>{{session_id}}</strong>
+      </div>
+
+      <p>To proceed with your appraisal, we need some additional details about your items. Please click the button below to provide the necessary information:</p>
+
+      <div class="button-container">
+        <!--[if mso]>
+        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://www.appraisily.com/success-payment/?session_id={{session_id}}" style="height:50px;v-text-anchor:middle;width:200px;" arcsize="10%" stroke="f" fillcolor="#007bff">
+          <w:anchorlock/>
+          <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">
+            Submit Appraisal Details
+          </center>
+        </v:roundrect>
+        <![endif]-->
+        <a href="https://www.appraisily.com/success-payment/?session_id={{session_id}}" class="button" style="background-color: #007bff !important; color: #ffffff !important;">
+          Submit Appraisal Details
+        </a>
+      </div>
+
+      <div class="note">
+        <strong>Note:</strong> If you can't submit the details right now, don't worry! You can always use the link provided in our previous email to complete this step later.
+      </div>
+
+      <p>Our team is ready to assist you throughout this process. If you have any questions or need help, simply reply to this email.</p>
+
+      <div class="signature">
+        <p>Best regards,<br>The Appraisily Team</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>&copy; {{current_year}} Appraisily. All rights reserved.</p>
+      <p>This email was sent because you recently made a payment for an appraisal service.<br>If you didn't request this, please contact our support team.</p>
+    </div>
+  </div>
+</body>
+</html>

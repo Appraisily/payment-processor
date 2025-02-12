@@ -1,10 +1,12 @@
 const { google } = require('googleapis');
 const sendGridMail = require('@sendgrid/mail');
+const { PubSub } = require('@google-cloud/pubsub');
 
 class PaymentRepository {
   constructor(config) {
     this.config = config;
     sendGridMail.setApiKey(config.SENDGRID_API_KEY);
+    this.pubsub = new PubSub();
   }
 
   async isDuplicateSession(sessionId) {
@@ -33,7 +35,14 @@ class PaymentRepository {
       created
     } = session;
 
-    const sessionDate = new Date(created * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
+    const sessionDate = new Date(created * 1000).toLocaleDateString('es-ES', { 
+      timeZone: 'Europe/Madrid',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: this.config.SALES_SPREADSHEET_ID,
@@ -53,6 +62,51 @@ class PaymentRepository {
         ]],
       },
     });
+
+    // Publish to CRM PubSub
+    await this.publishToCRM({
+      crmProcess: "stripePayment",
+      customer: {
+        email: customerEmail,
+        name: customerName,
+        stripeCustomerId: customer
+      },
+      payment: {
+        checkoutSessionId: session_id,
+        paymentIntentId: paymentIntentId,
+        amount: amountTotal / 100,
+        currency: session.currency,
+        status: session.payment_status,
+        metadata: {
+          serviceType: this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown',
+          sessionId: session_id
+        }
+      },
+      metadata: {
+        origin: "payment-processor",
+        environment: mode,
+        timestamp: Math.floor(Date.now() / 1000)
+      }
+    });
+  }
+
+  async publishToCRM(message) {
+    try {
+      const topicName = process.env.PUBSUB_CRM_NAME;
+      if (!topicName) {
+        console.error('PUBSUB_CRM_NAME environment variable not set');
+        return;
+      }
+
+      const topic = this.pubsub.topic(topicName);
+      const messageBuffer = Buffer.from(JSON.stringify(message));
+      
+      const messageId = await topic.publish(messageBuffer);
+      console.log(`Message ${messageId} published to CRM topic`);
+    } catch (error) {
+      console.error('Error publishing to CRM PubSub:', error);
+      // Don't throw error to avoid interrupting the main flow
+    }
   }
 
   async recordPendingAppraisal(session) {
@@ -68,7 +122,7 @@ class PaymentRepository {
       insertDataOption: 'INSERT_ROWS',
       resource: {
         values: [[
-          new Date(session.created * 1000).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }),
+          new Date(session.created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }),
           productDetails.productName,
           session.id,
           session.customer_details?.email || '',
