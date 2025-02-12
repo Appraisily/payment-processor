@@ -1,32 +1,8 @@
 const sharp = require('sharp');
-const heicConvert = require('heic-convert');
-
-async function convertHeicToJpeg(buffer) {
-  try {
-    console.log('Converting HEIC/HEIF to JPEG...');
-    const jpegBuffer = await heicConvert({
-      buffer: buffer,
-      format: 'JPEG',
-      quality: 0.85
-    });
-    console.log('HEIC/HEIF conversion successful');
-    return jpegBuffer;
-  } catch (error) {
-    console.error('Error converting HEIC/HEIF:', error);
-    throw new Error('Failed to convert HEIC/HEIF image');
-  }
-}
 
 async function optimizeImage(buffer) {
   try {
     console.log('Optimizing image...');
-    
-    // Check if the buffer is from a HEIC/HEIF image
-    const isHeic = buffer.toString('hex', 4, 8).toLowerCase() === '66747970';
-    if (isHeic) {
-      buffer = await convertHeicToJpeg(buffer);
-    }
-    
     return await sharp(buffer)
       .jpeg({
         quality: 85,

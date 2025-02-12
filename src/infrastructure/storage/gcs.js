@@ -8,7 +8,6 @@ class GCSClient {
       projectId: process.env.GOOGLE_CLOUD_PROJECT_ID
     });
     this.bucket = this.storage.bucket(config.GCS_BUCKET_NAME);
-    this.baseUrl = `https://storage.googleapis.com/${config.GCS_BUCKET_NAME}`;
   }
 
   async uploadFile(buffer, filename, metadata = {}) {
@@ -17,7 +16,7 @@ class GCSClient {
       const stream = file.createWriteStream({
         resumable: false,
         metadata: {
-          contentType: metadata.contentType || 'application/octet-stream',
+          contentType: 'image/jpeg',
           metadata: {
             ...metadata,
             uploadedAt: new Date().toISOString()
@@ -31,57 +30,20 @@ class GCSClient {
         stream.end(buffer);
       });
 
-      return `${this.baseUrl}/${filename}`;
+      return `https://storage.googleapis.com/${this.config.GCS_BUCKET_NAME}/${filename}`;
     } catch (error) {
       console.error('GCS upload error:', error);
       throw error;
     }
   }
 
-  getFolderUrl(sessionId) {
-    return `${this.baseUrl}/${sessionId}/`;
-  }
-
   async backupFiles(files, metadata = {}) {
     console.log('Starting GCS backup for files:', {
       session_id: metadata.session_id,
-      fileTypes: Object.keys(files),
-      hasMetadata: !!metadata
+      fileTypes: Object.keys(files)
     });
     const results = {};
     const timestamp = Date.now();
-
-    // Save request JSON first
-    try {
-      console.log('Backing up request data to GCS');
-      const requestData = {
-        ...metadata,
-        timestamp: new Date().toISOString()
-      };
-      const jsonFilename = `${metadata.session_id}/request-data.json`;
-      results.requestData = await this.uploadFile(
-        Buffer.from(JSON.stringify(requestData, null, 2)),
-        jsonFilename,
-        {
-          contentType: 'application/json',
-          ...metadata
-        }
-      );
-      console.log('Successfully backed up request data to GCS:', results.requestData);
-    } catch (error) {
-      console.error('Failed to backup request data:', error);
-      results.requestData = null;
-      await logError(this.config, {
-        severity: 'Warning',
-        scriptName: 'GCSClient',
-        errorCode: 'REQUEST_DATA_BACKUP_ERROR',
-        errorMessage: error.message,
-        stackTrace: error.stack,
-        additionalContext: JSON.stringify({
-          session_id: metadata.session_id
-        })
-      });
-    }
 
     for (const [key, fileArray] of Object.entries(files)) {
       if (fileArray && fileArray[0]) {
@@ -92,7 +54,6 @@ class GCSClient {
             fileArray[0].buffer,
             filename,
             {
-              contentType: 'image/jpeg',
               ...metadata,
               fileType: key
             }
@@ -120,10 +81,6 @@ class GCSClient {
       session_id: metadata.session_id,
       backedUpFiles: Object.keys(results)
     });
-    
-    // Set folder URL (with trailing slash to indicate directory)
-    results.folderUrl = this.getFolderUrl(metadata.session_id);
-    
     return results;
   }
 }

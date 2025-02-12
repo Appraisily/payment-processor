@@ -56,15 +56,10 @@ class AppraisalSheetsClient {
         // Update status and WordPress URL
         await sheets.spreadsheets.values.update({
           spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
-          range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!D:G${rowNumber}`,
+          range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
           valueInputOption: 'USER_ENTERED',
           resource: {
-            values: [[
-              data.customer_email,
-              data.customer_name,
-              'Pending',
-              data.wordpressEditUrl || ''
-            ]]
+            values: [['SUBMITTED', data.wordpressEditUrl || '']]
           }
         });
 
@@ -110,7 +105,7 @@ class AppraisalSheetsClient {
               data.session_id,
               data.customer_email,
               data.customer_name,
-              'Pending',
+              'SUBMITTED',
               data.wordpressEditUrl || '',
               '',  // Column H
               data.description || '' // Column I
@@ -163,7 +158,7 @@ class AppraisalSheetsClient {
           data: [
             {
               range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}`,
-              values: [['Pending']]
+              values: [['GCS SAVED']]
             },
             {
               range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!G${rowNumber}`,

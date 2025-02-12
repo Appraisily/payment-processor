@@ -1,16 +1,10 @@
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif'
-];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 function validateImageFile(file) {
   if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-    return `Invalid file type. Allowed types: JPEG, PNG, WebP, HEIC/HEIF`;
+    return `Invalid file type. Allowed types: JPEG, PNG, WebP`;
   }
 
   if (file.size > MAX_FILE_SIZE) {
