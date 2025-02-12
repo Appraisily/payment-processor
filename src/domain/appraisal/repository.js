@@ -13,7 +13,7 @@ class AppraisalRepository {
   }
 
   async createAppraisal(submission) {
-    const { session_id, images, customer_email, customer_name } = submission;
+    const { session_id, images, customer_email, customer_name, appraisal_type } = submission;
     let uploadedMedia = {};
     let post = null;
     let backupPromise = null;
@@ -21,8 +21,11 @@ class AppraisalRepository {
     try {
       // Start file backup early using GCS client
       backupPromise = images?.main ? this.gcsClient.backupFiles(images, {
+        description: submission.description,
         session_id,
         customer_email,
+        customer_name,
+        appraisal_type,
         post_id: 'pending'
       }) : Promise.resolve(null);
 
@@ -52,6 +55,7 @@ class AppraisalRepository {
               session_id,
               customer_email,
               customer_name,
+              appraisaltype: appraisal_type || 'Regular', // Default to Regular if not specified
               main: '',
               signature: '',
               age: ''
@@ -169,9 +173,9 @@ class AppraisalRepository {
       const backupUrls = await backupPromise;
 
       // Update GCS URL in sheets if backup was successful
-      if (backupUrls?.main) {
+      if (backupUrls?.folderUrl) {
         try {
-          await this.sheetsClient.updateGCSUrl(session_id, backupUrls.main);
+          await this.sheetsClient.updateGCSUrl(session_id, backupUrls.folderUrl);
         } catch (gcsError) {
           console.error('Failed to update GCS URL in sheets:', gcsError);
           // Continue execution despite GCS URL update error
@@ -219,6 +223,7 @@ class AppraisalRepository {
   async updatePostMedia(postId, data) {
     return await updatePost(postId, {
       meta: {
+        appraisaltype: data.appraisal_type || 'Regular',
         // Media IDs
         main: data.media.main?.id || '',
         signature: data.media.signature?.id || '',

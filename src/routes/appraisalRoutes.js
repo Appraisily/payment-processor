@@ -103,7 +103,7 @@ function setupAppraisalRoutes(app, config) {
     }
 
     // Get customer info from Stripe session if not provided
-    if (!req.body.customer_email || !req.body.customer_name) {
+    if (!req.body.customer_email || !req.body.customer_name || !req.body.appraisal_type) {
       try {
         const stripe = require('stripe')(config.STRIPE_SECRET_KEY_LIVE);
         const session = await stripe.checkout.sessions.retrieve(
@@ -120,6 +120,12 @@ function setupAppraisalRoutes(app, config) {
         // Always use Stripe session data for customer details
         req.body.customer_email = session.customer_details?.email;
         req.body.customer_name = session.customer_details?.name;
+        
+        // Get appraisal type from payment link if not provided
+        if (!req.body.appraisal_type && session.payment_link) {
+          const paymentLinkConfig = config.PAYMENT_LINKS[session.payment_link];
+          req.body.appraisal_type = paymentLinkConfig?.productName || 'Regular';
+        }
       } catch (error) {
         console.error('Error retrieving Stripe session:', error);
       }
@@ -131,6 +137,7 @@ function setupAppraisalRoutes(app, config) {
       images: req.files,
       customer_email: req.body.customer_email,
       customer_name: req.body.customer_name,
+      appraisal_type: req.body.appraisal_type || 'Regular',
       payment_id: req.body.payment_id
     };
 

@@ -113,7 +113,7 @@ class PaymentRepository {
     const auth = await this.getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
 
-    const productDetails = this.config.PAYMENT_LINKS[session.payment_link] || { productName: 'Unknown Product' };
+    const productDetails = this.config.PAYMENT_LINKS[session.payment_link] || { productName: 'Regular' };
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
@@ -127,7 +127,7 @@ class PaymentRepository {
           session.id,
           session.customer_details?.email || '',
           session.customer_details?.name || '',
-          'PENDING INFO',
+          'Pending',
         ]],
       },
     });

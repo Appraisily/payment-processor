@@ -10,28 +10,41 @@ class AppraisersBackendClient {
     try {
       console.log('Notifying appraisers backend:', {
         session_id: data.session_id,
-        wordpress_url: data.wordpress_url,
+        customer_email: data.customer_email,
+        post_id: data.wordpress_url.match(/post=(\d+)/)?.[1] || '',
+        post_edit_url: data.wordpress_url,
         images: {
           main: data.images.main || '',
           signature: data.images.signature || '',
           age: data.images.age || ''
-        }
+        },
+        description: data.description || ''
       });
 
+      // Extract post ID from WordPress URL
+      const postId = data.wordpress_url.match(/post=(\d+)/)?.[1];
+      if (!postId) {
+        throw new Error('Could not extract post ID from WordPress URL');
+      }
+
+      // Validate required fields
+      if (!data.session_id || !data.customer_email || !data.wordpress_url || !data.images.main) {
+        throw new Error('Missing required fields for appraisers backend notification');
+      }
+
       const response = await axios.post(
-        'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
+        this.config.APPRAISERS_BACKEND_URL,
         {
           session_id: data.session_id,
           customer_email: data.customer_email,
-          customer_name: data.customer_name || '',
-          description: data.description || '',
-          payment_id: data.payment_id || '',
-          wordpress_url: data.wordpress_url,
+          post_id: postId,
+          post_edit_url: data.wordpress_url,
           images: {
             main: data.images.main || '',
             age: data.images.age || '',
             signature: data.images.signature || ''
-          }
+          },
+          description: data.description || ''
         },
         {
           headers: {
@@ -44,7 +57,14 @@ class AppraisersBackendClient {
 
       console.log('Successfully notified appraisers backend:', {
         status: response.status,
-        data: response.data
+        data: response.data,
+        sentFields: {
+          session_id: !!data.session_id,
+          customer_email: !!data.customer_email,
+          post_id: !!postId,
+          post_edit_url: !!data.wordpress_url,
+          main_image: !!data.images.main
+        }
       });
 
       return response.data;
