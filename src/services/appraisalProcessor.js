@@ -1,9 +1,9 @@
 const stripeModule = require('stripe');
-const { createInitialPost, updatePostWithMedia } = require('../utils/wordPressClient');
+const { createPost, updatePost } = require('../infrastructure/wordpress/posts');
 const { processImagesAndUpdate } = require('./backgroundProcessor');
 const { updateAppraisalStatus } = require('../utils/spreadsheetClient');
 const { logError } = require('../utils/errorLogger');
-const { backupFiles } = require('../utils/storageClient');
+const GCSClient = require('../infrastructure/storage/gcs');
 
 async function processAppraisalSubmission(req, config, res) {
   const {

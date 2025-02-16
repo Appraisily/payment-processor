@@ -1,8 +1,9 @@
-const { optimizeImage } = require('../utils/imageProcessor');
-const { uploadMedia, updatePostWithMedia } = require('../utils/wordPressClient');
-const { sendAppraisalNotification } = require('../utils/emailService');
-const { logError } = require('../utils/errorLogger');
-const { backupFiles } = require('../utils/storageClient');
+const { optimizeImage } = require('../infrastructure/image/processor');
+const { uploadMedia } = require('../infrastructure/wordpress/media');
+const { updatePost } = require('../infrastructure/wordpress/posts');
+const SendGridClient = require('../infrastructure/email/sendgrid');
+const { logError } = require('../utils/error/logger');
+const GCSClient = require('../infrastructure/storage/gcs');
 const axios = require('axios');
 
 async function processImagesAndUpdate({ files, postId, config, backupPromise, metadata }) {

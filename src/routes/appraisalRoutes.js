@@ -1,7 +1,9 @@
 const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
-const { ENDPOINTS } = require('../infrastructure/wordpress/client');
+const { ENDPOINTS } = require('../infrastructure/wordpress/constants');
+const { createPost, updatePost } = require('../infrastructure/wordpress/posts');
+const { getCommonHeaders } = require('../infrastructure/wordpress/auth');
 const AppraisalService = require('../domain/appraisal/service');
 const { logError } = require('../utils/error/logger'); 
 
@@ -18,10 +20,7 @@ function setupAppraisalRoutes(app, config) {
       const response = await axios.get(
         `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}/${postId}`,
         { 
-          headers: {
-            Authorization: `Basic ${Buffer.from(`${config.WORDPRESS_USERNAME}:${config.WORDPRESS_APP_PASSWORD}`).toString('base64')}`,
-            'Accept': 'application/json'
-          }
+          headers: getCommonHeaders(config)
         }
       );
       
