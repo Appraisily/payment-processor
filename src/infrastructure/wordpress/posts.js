@@ -83,22 +83,29 @@ async function updatePost(postId, data, config) {
       outboundIP,
       postId,
       url: endpoint,
-      fields: Object.keys(data.meta)
+      fields: Object.keys(data.meta || {})
     });
     
-    const postData = {
+    // Start with base post data
+    let postData = {
       status: data.status || 'publish',
-      acf: {
-        // Media fields
-        main: data.meta.main || '',
-        signature: data.meta.signature || '',
-        age: data.meta.age || '',
-        // Customer fields
-        customer_name: data.meta.customer_name || '',
-        customer_email: data.meta.customer_email || '',
-        session_id: data.meta.session_id || ''
-      }
     };
+
+    // Only include ACF fields that have values
+    const acfFields = {};
+    if (data.meta) {
+      if (data.meta.main) acfFields.main = data.meta.main;
+      if (data.meta.signature) acfFields.signature = data.meta.signature;
+      if (data.meta.age) acfFields.age = data.meta.age;
+      if (data.meta.customer_name) acfFields.customer_name = data.meta.customer_name;
+      if (data.meta.customer_email) acfFields.customer_email = data.meta.customer_email;
+      if (data.meta.session_id) acfFields.session_id = data.meta.session_id;
+    }
+
+    // Only add ACF object if we have fields to update
+    if (Object.keys(acfFields).length > 0) {
+      postData.acf = acfFields;
+    }
 
     const response = await axios.post(
       endpoint,

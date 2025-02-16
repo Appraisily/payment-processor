@@ -43,41 +43,55 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 ## Project Structure
 
 ```
-├── src/
-│   ├── domain/                   # Domain logic and business rules
-│   │   ├── appraisal/           # Appraisal domain
-│   │   │   ├── repository.js    # Appraisal data operations
-│   │   │   ├── service.js       # Appraisal business logic
-│   │   │   ├── types.js         # Type definitions
-│   │   │   └── validator.js     # Input validation
-│   │   └── payment/             # Payment domain
-│   │       ├── repository.js    # Payment data operations
-│   │       ├── service.js       # Payment business logic
-│   │       ├── types.js         # Type definitions
-│   │       └── validator.js     # Input validation
-│   ├── infrastructure/          # External services integration
-│   │   ├── email/              # Email service
-│   │   │   └── sendgrid.js     # SendGrid integration
-│   │   ├── image/              # Image processing
-│   │   │   └── processor.js    # Image optimization
-│   │   ├── sheets/             # Google Sheets
-│   │   │   ├── client.js       # Sheets API client
-│   │   │   └── logger.js       # Error logging to sheets
-│   │   ├── storage/            # Cloud storage
-│   │   │   └── gcs.js         # Google Cloud Storage
-│   │   ├── stripe/             # Payment processing
-│   │   │   └── client.js       # Stripe API client
-│   │   └── wordpress/          # CMS integration
-│   │       └── client.js       # WordPress API client
-│   ├── routes/                 # API routes
-│   │   ├── appraisalRoutes.js  # Appraisal endpoints
-│   │   ├── stripeRoutes.js     # Stripe endpoints
-│   │   └── webhookRoutes.js    # Webhook handlers
-│   ├── utils/                  # Shared utilities
-│   │   └── error/             # Error handling
-│   │       └── logger.js      # Error logging
-│   ├── config.js              # Configuration management
-│   └── index.js              # Application entry point
+├── src/                        # Source code root
+│   ├── domain/                # Domain logic and business rules
+│   │   ├── appraisal/        # Appraisal domain
+│   │   │   ├── repositories/ # Repository implementations
+│   │   │   │   ├── appraisers.repository.js  # Appraisers backend integration
+│   │   │   │   ├── sheets.repository.js      # Google Sheets operations
+│   │   │   │   ├── storage.repository.js     # GCS storage operations
+│   │   │   │   └── wordpress.repository.js   # WordPress operations
+│   │   │   ├── service.js    # Appraisal business logic
+│   │   │   ├── types.js      # Type definitions
+│   │   │   └── validator.js  # Input validation
+│   │   └── payment/          # Payment domain
+│   │       ├── repository.js # Payment data operations
+│   │       ├── service.js    # Payment business logic
+│   │       ├── types.js      # Type definitions
+│   │       └── validator.js  # Input validation
+│   ├── infrastructure/       # External services integration
+│   │   ├── appraisers/      # Appraisers backend integration
+│   │   │   └── client.js    # Appraisers API client
+│   │   ├── email/           # Email service
+│   │   │   └── sendgrid.js  # SendGrid integration
+│   │   ├── image/           # Image processing
+│   │   │   └── processor.js # Image optimization
+│   │   ├── sheets/          # Google Sheets
+│   │   │   ├── appraisals.js # Appraisals sheet operations
+│   │   │   └── client.js    # Base Sheets client
+│   │   ├── storage/         # Cloud storage
+│   │   │   └── gcs.js      # Google Cloud Storage
+│   │   ├── stripe/          # Payment processing
+│   │   │   └── client.js    # Stripe API client
+│   │   └── wordpress/       # WordPress integration
+│   │       ├── auth.js      # Authentication utilities
+│   │       ├── constants.js # API endpoints and constants
+│   │       ├── media.js     # Media upload operations
+│   │       └── posts.js     # Post operations
+│   ├── routes/              # API routes
+│   │   ├── appraisalRoutes.js # Appraisal endpoints
+│   │   ├── stripeRoutes.js    # Stripe endpoints
+│   │   └── webhookRoutes.js   # Webhook handlers
+│   ├── services/            # Application services
+│   │   ├── appraisalProcessor.js  # Appraisal processing
+│   │   ├── backgroundProcessor.js  # Background tasks
+│   │   ├── checkoutProcessor.js    # Checkout processing
+│   │   └── webhookHandler.js       # Webhook handling
+│   ├── utils/               # Shared utilities
+│   │   └── error/          # Error handling
+│   │       └── logger.js   # Error logging
+│   ├── config.js           # Configuration management
+│   └── index.js           # Application entry point
 └── Dockerfile                # Container configuration
 ```
 

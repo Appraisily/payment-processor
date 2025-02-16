@@ -70,9 +70,6 @@ async function processAppraisalSubmission(req, config, res) {
       });
       throw new Error('Invalid session ID');
     }
-  } catch (error) {
-    throw error; // Re-throw to be caught by outer try-catch
-  }
 
     // Get customer details, fallback to safe defaults
     const customer_email = stripeSession?.customer_details?.email || req.body.email || 'unknown@email';
