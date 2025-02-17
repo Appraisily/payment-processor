@@ -47,7 +47,7 @@ function setupStripeRoutes(app, config) {
           name: session.customer_details?.name,
           email: session.customer_details?.email
         },
-        amount_total: session.amount_total,
+        amount_total: session.amount_total / 100,
         currency: session.currency,
         payment_status: session.payment_status
       });

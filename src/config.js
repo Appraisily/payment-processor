@@ -62,10 +62,10 @@ class Config {
 
       // Payment Links Configuration
       PAYMENT_LINKS: {
-        'plink_1PzzahAQSJ9n5XyNZTMmYyLJ': { productName: 'RegularArt' },
-        'plink_1OnRh5AQSJ9n5XyNBhDuqbtS': { productName: 'RegularArt' },
-        'plink_1OnRpsAQSJ9n5XyN2BCtWNEs': { productName: 'InsuranceArt' },
-        'plink_1OnRzAAQSJ9n5XyNyLmReeCk': { productName: 'TaxArt' }
+        'plink_1PzzahAQSJ9n5XyNZTMmYyLJ': { productName: 'Regular' },
+        'plink_1OnRh5AQSJ9n5XyNBhDuqbtS': { productName: 'Regular' },
+        'plink_1OnRpsAQSJ9n5XyN2BCtWNEs': { productName: 'Insurance' },
+        'plink_1OnRzAAQSJ9n5XyNyLmReeCk': { productName: 'IRS' }
       }
     };
 
