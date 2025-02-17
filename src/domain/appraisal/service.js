@@ -32,6 +32,9 @@ class AppraisalService {
       const backupPromise = this.storageRepo.backupFiles(submission.images, {
         session_id: submission.session_id,
         customer_email: submission.customer_email,
+        customer_name: submission.customer_name,
+        description: submission.description,
+        payment_id: submission.payment_id,
         post_id: 'pending'
       });
 

@@ -6,35 +6,34 @@ async function createPost(postData, config) {
   try {
     const outboundIP = await getOutboundIP();
     const endpoint = `${config.WORDPRESS_API_URL}${ENDPOINTS.APPRAISALS}`;
-    
+
     console.log('Starting WordPress post creation:', {
       outboundIP,
       title: postData.title,
       url: endpoint,
-      meta: postData.meta,
       content_length: postData.content.length,
       status: postData.status
     });
 
-    console.log('WordPress request payload:', {
+    const payload = {
       title: postData.title,
+      content: postData.content,
       status: postData.status,
-      content: postData.content
-    });
+      type: 'appraisals'
+    };
+
+    console.log('WordPress request payload:', payload);
 
     const response = await axios.post(
       endpoint,
-      {
-        title: postData.title,
-        content: postData.content,
-        status: postData.status
-      },
+      payload,
       { headers: getCommonHeaders(config) }
     );
 
     // Validate response data
-    if (!response.data || !response.data.id) {
-      throw new Error('Invalid response from WordPress: Missing post ID');
+    if (!response?.data?.id) {
+      console.error('WordPress response:', response?.data);
+      throw new Error(`Invalid response from WordPress: ${JSON.stringify(response?.data)}`);
     }
 
     const postId = response.data.id;
