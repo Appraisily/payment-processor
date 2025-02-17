@@ -47,9 +47,15 @@ class AppraisalService {
       // Process images if any
       let uploadedMedia = {};
       if (submission.images?.main) {
+        console.log('Processing images for WordPress upload');
         uploadedMedia = await this.wordpressRepo.uploadMedia(submission.images);
 
         if (post) {
+          console.log('Updating post with media:', {
+            postId: post.id,
+            mediaIds: Object.keys(uploadedMedia).map(key => uploadedMedia[key]?.id)
+          });
+
           await this.wordpressRepo.updatePostWithMedia(post.id, {
             media: uploadedMedia,
             customer_name: submission.customer_name,
@@ -57,6 +63,7 @@ class AppraisalService {
             session_id: submission.session_id
           });
 
+          console.log('Updating sheets with media URLs');
           await this.sheetsRepo.updateMediaUrls(submission.session_id, {
             main: uploadedMedia.main?.url || '',
             signature: uploadedMedia.signature?.url || '',

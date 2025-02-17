@@ -81,26 +81,33 @@ async function updatePost(postId, data, config) {
     console.log('Updating WordPress post:', {
       outboundIP,
       postId,
-      url: endpoint
+      url: endpoint,
+      meta: data.meta ? Object.keys(data.meta) : []
     });
     
-    // Prepare post data with required fields
+    // Build ACF fields object, excluding null/empty values
+    const acfFields = {};
+    
+    if (data.meta) {
+      // Handle media fields - only include if they have valid IDs
+      if (data.meta.main && data.meta.main !== '0') acfFields.main = data.meta.main;
+      if (data.meta.signature && data.meta.signature !== '0') acfFields.signature = data.meta.signature;
+      if (data.meta.age && data.meta.age !== '0') acfFields.age = data.meta.age;
+      
+      // Handle customer info fields - only include if they have values
+      if (data.meta.customer_name) acfFields.customer_name = data.meta.customer_name;
+      if (data.meta.customer_email) acfFields.customer_email = data.meta.customer_email;
+      if (data.meta.session_id) acfFields.session_id = data.meta.session_id;
+    }
+    
+    // Only include ACF in post data if we have fields to update
     const postData = {
       status: data.status || 'publish'
-    }
+    };
 
-    // Handle ACF fields
-    if (data.meta) {
-      postData.acf = {
-        main: data.meta.main || '0',
-        signature: data.meta.signature || '0',
-        age: data.meta.age || '0',
-        customer_name: data.meta.customer_name || '',
-        customer_email: data.meta.customer_email || '',
-        session_id: data.meta.session_id || ''
-      };
-
-      console.log('Updating post with ACF fields:', postData.acf);
+    if (Object.keys(acfFields).length > 0) {
+      postData.acf = acfFields;
+      console.log('Updating post with ACF fields:', acfFields);
     }
 
     const response = await axios.post(

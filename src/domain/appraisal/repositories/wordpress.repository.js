@@ -56,15 +56,26 @@ class WordPressRepository {
   }
 
   async updatePostWithMedia(postId, data) {
+    const meta = {};
+    
+    // Only include media fields if they exist
+    if (data.media.main?.id) meta.main = data.media.main.id;
+    if (data.media.signature?.id) meta.signature = data.media.signature.id;
+    if (data.media.age?.id) meta.age = data.media.age.id;
+    
+    // Only include customer info if it exists
+    if (data.customer_name) meta.customer_name = data.customer_name;
+    if (data.customer_email) meta.customer_email = data.customer_email;
+    if (data.session_id) meta.session_id = data.session_id;
+    
+    console.log('Updating post with media and metadata:', {
+      postId,
+      media: Object.keys(data.media).filter(key => data.media[key]?.id),
+      meta: Object.keys(meta)
+    });
+
     return await updatePost(postId, {
-      meta: {
-        main: data.media.main?.id || '0',
-        signature: data.media.signature?.id || '0',
-        age: data.media.age?.id || '0',
-        customer_name: data.customer_name || '',
-        customer_email: data.customer_email || '',
-        session_id: data.session_id || ''
-      }
+      meta
     }, this.config);
   }
 
