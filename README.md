@@ -1,6 +1,6 @@
 # Payment Processor Service
 
-A Node.js service that handles Stripe payments, records transactions, manages art appraisal workflows, and integrates with WordPress for content management. Built following modular design principles and best practices.
+A Node.js service that handles Stripe payments, records transactions, manages art appraisal workflows, and integrates with WordPress for content management. Built following modular design principles and best practices for secure payment processing and data management.
 
 ## Features
 
@@ -8,7 +8,8 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
   - Stripe webhook handling for both test and live modes
   - Secure payment verification with signature validation
   - Automatic transaction recording in Google Sheets
-  - Support for multiple payment link types (Regular, Insurance, Tax)
+  - Support for multiple payment link types (Regular, Insurance, IRS)
+  - Automatic amount conversion from Stripe's cents format
 
 - **Data Management**
   - Google Sheets integration for sales and appraisals tracking
@@ -234,10 +235,10 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 Currently supported payment links:
 ```javascript
 {
-  'plink_1PzzahAQSJ9n5XyNZTMmYyLJ': { productName: 'RegularArt' },
-  'plink_1OnRh5AQSJ9n5XyNBhDuqbtS': { productName: 'RegularArt' },
-  'plink_1OnRpsAQSJ9n5XyN2BCtWNEs': { productName: 'InsuranceArt' },
-  'plink_1OnRzAAQSJ9n5XyNyLmReeCk': { productName: 'TaxArt' }
+  'plink_1PzzahAQSJ9n5XyNZTMmYyLJ': { productName: 'Regular' },
+  'plink_1OnRh5AQSJ9n5XyNBhDuqbtS': { productName: 'Regular' },
+  'plink_1OnRpsAQSJ9n5XyN2BCtWNEs': { productName: 'Insurance' },
+  'plink_1OnRzAAQSJ9n5XyNyLmReeCk': { productName: 'IRS' }
 }
 ```
 
@@ -273,8 +274,7 @@ The service implements comprehensive error handling:
 ### API Data Structures
 
 #### Appraisal Submission
-The appraisal submission process is handled by the AppraisalUploadForm component
-which sends data to the `/api/appraisals` endpoint. The service validates:
+The appraisal submission process is handled by the AppraisalUploadForm component which sends data to the `/api/appraisals` endpoint. The service validates:
 
 - File types: JPEG, PNG, WebP
 - File sizes: Maximum 10MB per file
@@ -285,6 +285,20 @@ which sends data to the `/api/appraisals` endpoint. The service validates:
 Customer information is automatically retrieved from Stripe if not provided
 in the request.
 
+#### Stripe Session Endpoint
+The `/stripe/session/:sessionId` endpoint returns session information with proper amount formatting:
+
+```json
+{
+  "customer_details": {
+    "name": "string",
+    "email": "string"
+  },
+  "amount_total": number, // Converted from Stripe's cents format
+  "currency": "string",
+  "payment_status": "string"
+}
+```
 
 ### Prerequisites
 - Node.js 18+

@@ -28,16 +28,9 @@ class StripeClient {
 
   async retrieveSession(sessionId, mode) {
     const client = this.getClient(mode);
-    const session = await client.checkout.sessions.retrieve(sessionId, {
+    return await client.checkout.sessions.retrieve(sessionId, {
       expand: ['customer_details']
     });
-    
-    // Convert amount from cents to standard currency format
-    if (session.amount_total) {
-      session.amount_total = session.amount_total / 100;
-    }
-    
-    return session;
   }
 }
 
