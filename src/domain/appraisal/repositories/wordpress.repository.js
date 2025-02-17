@@ -27,13 +27,14 @@ class WordPressRepository {
   async updatePostMetadata(postId, submission) {
     try {
       await updatePost(postId, {
+        status: 'draft',
         meta: {
           session_id: submission.session_id,
           customer_email: submission.customer_email,
           customer_name: submission.customer_name,
-          main: '',
-          signature: '',
-          age: ''
+          main: '0',
+          signature: '0',
+          age: '0'
         }
       }, this.config);
     } catch (error) {
@@ -57,12 +58,12 @@ class WordPressRepository {
   async updatePostWithMedia(postId, data) {
     return await updatePost(postId, {
       meta: {
-        main: data.media.main?.id || '',
-        signature: data.media.signature?.id || '',
-        age: data.media.age?.id || '',
-        customer_name: data.customer_name,
-        customer_email: data.customer_email,
-        session_id: data.session_id
+        main: data.media.main?.id || '0',
+        signature: data.media.signature?.id || '0',
+        age: data.media.age?.id || '0',
+        customer_name: data.customer_name || '',
+        customer_email: data.customer_email || '',
+        session_id: data.session_id || ''
       }
     }, this.config);
   }

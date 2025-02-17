@@ -81,29 +81,26 @@ async function updatePost(postId, data, config) {
     console.log('Updating WordPress post:', {
       outboundIP,
       postId,
-      url: endpoint,
-      fields: Object.keys(data.meta || {})
+      url: endpoint
     });
     
-    // Start with base post data
-    let postData = {
-      status: data.status || 'publish',
-    };
-
-    // Only include ACF fields that have values
-    const acfFields = {};
-    if (data.meta) {
-      if (data.meta.main) acfFields.main = data.meta.main;
-      if (data.meta.signature) acfFields.signature = data.meta.signature;
-      if (data.meta.age) acfFields.age = data.meta.age;
-      if (data.meta.customer_name) acfFields.customer_name = data.meta.customer_name;
-      if (data.meta.customer_email) acfFields.customer_email = data.meta.customer_email;
-      if (data.meta.session_id) acfFields.session_id = data.meta.session_id;
+    // Prepare post data with required fields
+    const postData = {
+      status: data.status || 'publish'
     }
 
-    // Only add ACF object if we have fields to update
-    if (Object.keys(acfFields).length > 0) {
-      postData.acf = acfFields;
+    // Handle ACF fields
+    if (data.meta) {
+      postData.acf = {
+        main: data.meta.main || '0',
+        signature: data.meta.signature || '0',
+        age: data.meta.age || '0',
+        customer_name: data.meta.customer_name || '',
+        customer_email: data.meta.customer_email || '',
+        session_id: data.meta.session_id || ''
+      };
+
+      console.log('Updating post with ACF fields:', postData.acf);
     }
 
     const response = await axios.post(
