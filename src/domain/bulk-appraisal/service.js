@@ -105,6 +105,50 @@ class BulkAppraisalService {
     }
   }
 
+  async updateSessionEmail(sessionId, email) {
+    try {
+      const bucket = this.storage.bucket(this.config.GCS_BULK_APPRAISAL_BUCKET);
+      
+      // Check if session exists
+      const [files] = await bucket.getFiles({
+        prefix: `${sessionId}/`
+      });
+
+      if (!files.length) {
+        throw new Error('Session not found');
+      }
+
+      // Get or create customer info file
+      const customerInfoFile = bucket.file(`${sessionId}/customer_info.json`);
+      let customerInfo = {};
+
+      try {
+        const [content] = await customerInfoFile.download();
+        customerInfo = JSON.parse(content.toString());
+      } catch (error) {
+        // File doesn't exist yet, which is fine
+        console.log('No existing customer info file found');
+      }
+
+      // Update email
+      customerInfo.email = email;
+      customerInfo.updated_at = new Date().toISOString();
+
+      // Save updated info
+      await customerInfoFile.save(JSON.stringify(customerInfo, null, 2));
+
+      console.log('Session email updated:', {
+        session_id: sessionId,
+        email: email
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error updating session email:', error);
+      throw error;
+    }
+  }
+
   async finalizeSession(sessionId, customerInfo) {
     try {
       // Get session status to verify files exist

@@ -159,6 +159,54 @@ function setupBulkAppraisalRoutes(app, config) {
     }
   });
 
+  router.put('/session/:sessionId/email', express.json(), async (req, res) => {
+    const { sessionId } = req.params;
+    const { email } = req.body;
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email address is required'
+      });
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email address'
+      });
+    }
+
+    try {
+      await bulkAppraisalService.updateSessionEmail(sessionId, email);
+
+      res.status(200).json({
+        success: true,
+        message: 'Email updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating session email:', error);
+      await logError(config, {
+        severity: 'Error',
+        scriptName: 'bulkAppraisalRoutes',
+        errorCode: 'SESSION_EMAIL_UPDATE_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({
+          session_id: sessionId
+        })
+      });
+
+      const statusCode = error.message === 'Session not found' ? 404 : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   router.post('/finalize/:sessionId', express.json(), async (req, res) => {
     const { sessionId } = req.params;
     const { email, phone, notes } = req.body;
