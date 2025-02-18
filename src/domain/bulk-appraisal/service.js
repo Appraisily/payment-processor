@@ -1,5 +1,6 @@
 const { Storage } = require('@google-cloud/storage');
 const { v4: uuidv4 } = require('uuid');
+const { PubSub } = require('@google-cloud/pubsub');
 const { logError } = require('../../utils/error/logger');
 
 class BulkAppraisalService {
@@ -8,6 +9,7 @@ class BulkAppraisalService {
     this.storage = new Storage({
       projectId: process.env.GOOGLE_CLOUD_PROJECT_ID
     });
+    this.pubsub = new PubSub();
   }
 
   async initializeSession() {
@@ -105,6 +107,25 @@ class BulkAppraisalService {
     }
   }
 
+  async publishToCRM(message) {
+    try {
+      const topicName = process.env.PUBSUB_CRM_NAME;
+      if (!topicName) {
+        console.error('PUBSUB_CRM_NAME environment variable not set');
+        return;
+      }
+
+      const topic = this.pubsub.topic(topicName);
+      const messageBuffer = Buffer.from(JSON.stringify(message));
+      
+      const messageId = await topic.publish(messageBuffer);
+      console.log(`Message ${messageId} published to CRM topic`);
+    } catch (error) {
+      console.error('Error publishing to CRM PubSub:', error);
+      // Don't throw error to avoid interrupting the main flow
+    }
+  }
+
   async updateSessionEmail(sessionId, email) {
     try {
       const bucket = this.storage.bucket(this.config.GCS_BULK_APPRAISAL_BUCKET);
@@ -140,6 +161,20 @@ class BulkAppraisalService {
       console.log('Session email updated:', {
         session_id: sessionId,
         email: email
+      });
+
+      // Publish CRM notification
+      await this.publishToCRM({
+        crmProcess: "bulkAppraisalEmailUpdate",
+        customer: {
+          email: email
+        },
+        metadata: {
+          origin: "payment-processor",
+          sessionId: sessionId,
+          environment: process.env.NODE_ENV || 'production',
+          timestamp: Math.floor(Date.now() / 1000)
+        }
       });
 
       return true;
@@ -184,6 +219,25 @@ class BulkAppraisalService {
       }));
 
       // Create Stripe checkout session
+      // Publish CRM notification
+      await this.publishToCRM({
+        crmProcess: "bulkAppraisalFinalized",
+        customer: {
+          email: customerInfo.email,
+          notes: customerInfo.notes || ''
+        },
+        appraisal: {
+          type: customerInfo.appraisal_type,
+          itemCount: sessionStatus.files.length,
+          sessionId: sessionId
+        },
+        metadata: {
+          origin: "payment-processor",
+          environment: process.env.NODE_ENV || 'production',
+          timestamp: Math.floor(Date.now() / 1000)
+        }
+      });
+
       const stripe = require('stripe')(this.config.STRIPE_SECRET_KEY_LIVE);
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
