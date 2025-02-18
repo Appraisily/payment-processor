@@ -281,28 +281,56 @@ function setupBulkAppraisalRoutes(app, config) {
 
   router.post('/finalize/:sessionId', express.json(), async (req, res) => {
     const { sessionId } = req.params;
-    const { email, phone, notes, appraisal_type } = req.body;
-
+    const { appraisal_type } = req.body;
+    
+    console.log('Finalize request received:', {
+      session_id: sessionId,
+      appraisal_type
+    });
+    
     // Validate appraisal type
-    const validTypes = ['regular', 'insurance', 'tax'];
+    const validTypes = ['regular', 'insurance', 'IRS'];
     if (!appraisal_type || !validTypes.includes(appraisal_type)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid appraisal type. Must be one of: regular, insurance, tax'
+        error: 'Invalid appraisal type. Must be one of: regular, insurance, IRS'
       });
     }
-
+    
     try {
-      const { checkout_url } = await bulkAppraisalService.finalizeSession(sessionId, {
-        email,
-        phone,
-        notes,
-        appraisal_type
-      });
-
+      // Get session status first to validate
+      const sessionStatus = await bulkAppraisalService.getSessionStatus(sessionId);
+      
+      if (!sessionStatus.session.items.length) {
+        return res.status(400).json({
+          success: false,
+          error: 'No files uploaded in this session'
+        });
+      }
+      
+      // Start finalization process
+      const { checkout_url } = await bulkAppraisalService.finalizeSession(sessionId, appraisal_type);
+      
+      // Send success response immediately
       res.status(200).json({
         success: true,
         redirect_url: checkout_url
+      });
+      
+      // Handle PubSub message in background
+      bulkAppraisalService.publishFinalizationMessage(sessionId, appraisal_type, sessionStatus).catch(error => {
+        console.error('Error publishing finalization message:', error);
+        logError(config, {
+          severity: 'Warning',
+          scriptName: 'bulkAppraisalRoutes',
+          errorCode: 'PUBSUB_PUBLISH_ERROR',
+          errorMessage: error.message,
+          stackTrace: error.stack,
+          additionalContext: JSON.stringify({
+            session_id: sessionId,
+            appraisal_type
+          })
+        });
       });
     } catch (error) {
       console.error('Error finalizing bulk session:', error);
@@ -313,10 +341,7 @@ function setupBulkAppraisalRoutes(app, config) {
         errorMessage: error.message,
         stackTrace: error.stack,
         additionalContext: JSON.stringify({
-          session_id: sessionId,
-          has_email: !!email,
-          has_phone: !!phone,
-          has_notes: !!notes
+          session_id: sessionId
         })
       });
 

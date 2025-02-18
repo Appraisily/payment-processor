@@ -226,51 +226,30 @@ class BulkAppraisalService {
     }
   }
 
-  async finalizeSession(sessionId, customerInfo) {
+  async publishFinalizationMessage(sessionId, appraisalType, sessionStatus) {
     try {
-      const pricePerItem = {
-        regular: 2500,    // $25 per item
-        insurance: 5000,  // $50 per item
-        tax: 7500        // $75 per item
-      };
-
-      const appraisalTypeDescriptions = {
-        regular: 'Standard art appraisal',
-        insurance: 'Insurance valuation appraisal',
-        tax: 'Tax documentation appraisal'
-      };
-
-      // Get session status to verify files exist
-      const sessionStatus = await this.getSessionStatus(sessionId);
-      
-      if (!sessionStatus.files.length) {
-        throw new Error('No files uploaded in this session');
-      }
-
-      // Create metadata file with customer info
+      // Get customer info
       const bucket = this.storage.bucket(this.config.GCS_BULK_APPRAISAL_BUCKET);
-      const metadataFile = bucket.file(`${sessionId}/customer_info.json`);
+      const customerInfoFile = bucket.file(`${sessionId}/customer_info.json`);
+      let customerInfo = {};
       
-      await metadataFile.save(JSON.stringify({
-        email: customerInfo.email || '',
-        phone: customerInfo.phone || '',
-        notes: customerInfo.notes || '',
-        appraisal_type: customerInfo.appraisal_type,
-        files_count: sessionStatus.files.length,
-        finalized_at: new Date().toISOString()
-      }));
-
-      // Create Stripe checkout session
-      // Publish CRM notification
+      try {
+        const [content] = await customerInfoFile.download();
+        customerInfo = JSON.parse(content.toString());
+      } catch (error) {
+        console.log('No customer info found for session:', sessionId);
+      }
+      
+      // Prepare and publish message
       await this.publishToCRM({
         crmProcess: "bulkAppraisalFinalized",
         customer: {
-          email: customerInfo.email,
+          email: customerInfo.email || '',
           notes: customerInfo.notes || ''
         },
         appraisal: {
-          type: customerInfo.appraisal_type,
-          itemCount: sessionStatus.files.length,
+          type: appraisalType,
+          itemCount: sessionStatus.session.items.length,
           sessionId: sessionId
         },
         metadata: {
@@ -278,6 +257,60 @@ class BulkAppraisalService {
           environment: process.env.NODE_ENV || 'production',
           timestamp: Math.floor(Date.now() / 1000)
         }
+      });
+    } catch (error) {
+      console.error('Error publishing finalization message:', error);
+      throw error;
+    }
+  }
+
+  async finalizeSession(sessionId, appraisalType) {
+    try {
+      const pricePerItem = {
+        regular: 2500,    // $25 per item
+        insurance: 5000,  // $50 per item
+        IRS: 7500        // $75 per item
+      };
+
+      const appraisalTypeDescriptions = {
+        regular: 'Standard art appraisal',
+        insurance: 'Insurance valuation appraisal',
+        IRS: 'IRS documentation appraisal'
+      };
+
+      // Get session status to verify files exist
+      const sessionStatus = await this.getSessionStatus(sessionId);
+      
+      if (!sessionStatus.session.items.length) {
+        throw new Error('No files uploaded in this session');
+      }
+
+      // Update metadata file with finalization info
+      const bucket = this.storage.bucket(this.config.GCS_BULK_APPRAISAL_BUCKET);
+      const metadataFile = bucket.file(`${sessionId}/customer_info.json`);
+
+      // Get existing metadata
+      let metadata = {};
+      try {
+        const [content] = await metadataFile.download();
+        metadata = JSON.parse(content.toString());
+      } catch (error) {
+        console.log('No existing metadata found, creating new');
+      }
+
+      // Update metadata with finalization info
+      metadata.appraisal_type = appraisalType;
+      metadata.files_count = sessionStatus.session.items.length;
+      metadata.finalized_at = new Date().toISOString();
+      metadata.status = 'finalized';
+
+      await metadataFile.save(JSON.stringify(metadata, null, 2));
+
+      console.log('Session finalized:', {
+        session_id: sessionId,
+        appraisal_type: appraisalType,
+        files_count: sessionStatus.session.items.length,
+        customer_email: metadata.email
       });
 
       const stripe = require('stripe')(this.config.STRIPE_SECRET_KEY_LIVE);
@@ -287,18 +320,18 @@ class BulkAppraisalService {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `${appraisalTypeDescriptions[customerInfo.appraisal_type]} - ${sessionStatus.files.length} items`,
-              description: `Bulk ${customerInfo.appraisal_type} appraisal service for ${sessionStatus.files.length} items`
+              name: `${appraisalTypeDescriptions[appraisalType]} - ${sessionStatus.session.items.length} items`,
+              description: `Bulk ${appraisalType} appraisal service for ${sessionStatus.session.items.length} items`
             },
-            unit_amount: pricePerItem[customerInfo.appraisal_type] * sessionStatus.files.length
+            unit_amount: pricePerItem[appraisalType] * sessionStatus.session.items.length
           },
           quantity: 1
         }],
-        customer_email: customerInfo.email,
+        customer_email: metadata.email,
         metadata: {
           bulk_session_id: sessionId,
-          items_count: sessionStatus.files.length.toString(),
-          appraisal_type: customerInfo.appraisal_type
+          items_count: sessionStatus.session.items.length.toString(),
+          appraisal_type: appraisalType
         },
         mode: 'payment',
         success_url: `${process.env.FRONTEND_URL || 'https://www.appraisily.com'}/bulk-success?session_id={CHECKOUT_SESSION_ID}`,
