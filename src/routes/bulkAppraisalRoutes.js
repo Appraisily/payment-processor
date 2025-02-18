@@ -235,6 +235,13 @@ function setupBulkAppraisalRoutes(app, config) {
   router.put('/description', express.json(), async (req, res) => {
     const { session_id, item_id, description, image_id } = req.body;
 
+    console.log('Description update request received:', {
+      session_id,
+      item_id,
+      description_length: description?.length,
+      image_id
+    });
+
     if (!session_id || !item_id || !description) {
       return res.status(400).json({
         success: false,
