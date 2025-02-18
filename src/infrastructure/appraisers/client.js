@@ -10,7 +10,7 @@ class AppraisersBackendClient {
     try {
       console.log('Notifying appraisers backend:', {
         session_id: data.session_id,
-        wordpress_url: data.wordpress_url,
+        post_edit_url: data.post_edit_url,
         images: {
           main: data.images.main || '',
           signature: data.images.signature || '',
@@ -23,10 +23,9 @@ class AppraisersBackendClient {
         {
           session_id: data.session_id,
           customer_email: data.customer_email,
-          customer_name: data.customer_name || '',
+          post_id: data.post_id,
+          post_edit_url: data.post_edit_url,
           description: data.description || '',
-          payment_id: data.payment_id || '',
-          wordpress_url: data.wordpress_url,
           images: {
             main: data.images.main || '',
             age: data.images.age || '',
@@ -44,7 +43,9 @@ class AppraisersBackendClient {
 
       console.log('Successfully notified appraisers backend:', {
         status: response.status,
-        data: response.data
+        data: response.data,
+        post_id: data.post_id,
+        post_edit_url: data.post_edit_url
       });
 
       return response.data;

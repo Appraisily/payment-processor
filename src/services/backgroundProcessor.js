@@ -48,10 +48,9 @@ async function processImagesAndUpdate({ files, postId, config, backupPromise, me
     const backendPayload = {
       session_id: metadata.session_id,
       customer_email: metadata.customer_email,
-      customer_name: metadata.customer_name || '',
+      post_id: postId.toString(),
+      post_edit_url: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${postId}&action=edit`,
       description: metadata.description || '',
-      payment_id: metadata.payment_id || '',
-      wordpress_url: `${config.WORDPRESS_ADMIN_URL}/post.php?post=${postId}&action=edit`,
       images: {
         main: uploadedMedia.main?.url || '',
         age: uploadedMedia.age?.url || '',
