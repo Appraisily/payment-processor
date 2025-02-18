@@ -55,6 +55,7 @@ class Config {
 
       // Environment Configuration
       GCS_BUCKET_NAME: process.env.GCS_BUCKET_NAME || 'appraisily-image-backups',
+      GCS_BULK_APPRAISAL_BUCKET: await this.getSecret('GCS_BULK_APPRAISAL_BUCKET'),
       CHATGPT_CHAT_URL: process.env.CHATGPT_CHAT_URL || 'https://chatgpt.com/share/e/66e9631f-d6e8-8005-8d38-bc44d9287406',
       RESOLUTION_LINK: process.env.RESOLUTION_LINK || 'https://console.cloud.google.com/functions/details/us-central1/stripeWebhookHandler?project=civil-forge-403609',
       ASSIGNED_TO: process.env.ASSIGNED_TO || 'Your Name',
