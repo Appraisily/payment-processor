@@ -11,12 +11,18 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
   - Support for multiple payment link types (Regular, Insurance, IRS, Bulk)
   - Automatic amount conversion from Stripe's cents format
   - Bulk appraisal support with dynamic pricing
+  - Session-based appraisal management
+  - Flexible pricing based on appraisal type
+  - Bulk appraisal support with dynamic pricing
 
 - **Data Management**
   - Google Sheets integration for sales and appraisals tracking
   - Comprehensive error logging system
   - Secure secret management via Google Cloud Secret Manager
   - Caching system for configuration
+  - Bulk file management in Google Cloud Storage
+  - Session metadata persistence
+  - Customer information tracking
   - Bulk file management in Google Cloud Storage
 
 - **WordPress Integration**
@@ -30,6 +36,9 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
   - Format conversion to JPEG
   - Size limits and validation
   - EXIF data handling
+  - Bulk image processing and storage
+  - Signed URL generation for secure access
+  - Position-based file ordering
   - Bulk image processing and storage
   - Signed URL generation for secure access
 
@@ -46,6 +55,9 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
   - Input validation
   - Secure file upload handling
   - Session-based access control
+  - Signed URL expiration
+  - Secure file upload handling
+  - Session-based access control
 
 ## Project Structure
 
@@ -54,6 +66,8 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 │   ├── domain/                # Domain logic and business rules
 │   │   ├── appraisal/        # Appraisal domain
 │   │   │   ├── repositories/ # Repository implementations
+│   │   ├── bulk-appraisal/   # Bulk appraisal domain
+│   │   │   ├── service.js    # Bulk appraisal business logic
 │   │   │   │   ├── appraisers.repository.js  # Appraisers backend integration
 │   │   ├── bulk-appraisal/   # Bulk appraisal domain
 │   │   │   ├── service.js    # Bulk appraisal business logic
@@ -313,6 +327,7 @@ Response:
 
 ### Required Secrets (Google Cloud Secret Manager)
 - `GCS_BULK_APPRAISAL_BUCKET`: Bucket for bulk appraisal files
+- `GCS_BULK_APPRAISAL_BUCKET`: Bucket for bulk appraisal files
 - `STRIPE_SECRET_KEY_TEST`
 - `STRIPE_SECRET_KEY_LIVE`
 - `STRIPE_WEBHOOK_SECRET_TEST`
@@ -378,6 +393,65 @@ The service implements comprehensive error handling:
    - Proper HTTP status codes
 
 ## Development
+
+### Bulk Appraisal Flow
+
+1. **Session Initialization**
+   - Client requests new session
+   - Server generates UUID
+   - Creates GCS folder structure
+   - Returns session details
+
+2. **File Upload**
+   - Client uploads files individually
+   - Server processes and stores files
+   - Generates signed URLs
+   - Maintains file order
+
+3. **Session Management**
+   - Status tracking
+   - File listing
+   - Metadata management
+   - Expiration handling
+
+4. **Finalization**
+   - Customer information collection
+   - Appraisal type selection
+   - Dynamic pricing based on type:
+     - Regular: $25 per item
+     - Insurance: $50 per item
+     - Tax: $75 per item
+   - Stripe checkout session creation
+   - Success/cancel URL handling
+
+### Bulk Appraisal Implementation
+
+1. **Session Management**
+   - Unique session IDs with UUID v4
+   - 24-hour expiration
+   - Secure file storage in GCS
+   - Customer metadata preservation
+
+2. **File Handling**
+   - Server-side file ID generation
+   - Position-based ordering
+   - Automatic JPEG conversion
+   - Signed URL generation
+   - Maximum file size enforcement
+
+3. **Security**
+   - Session-based access control
+   - Secure URL generation
+   - File type validation
+   - Size limit enforcement
+   - Metadata validation
+
+4. **Error Handling**
+   - Comprehensive error logging
+   - Client-friendly error messages
+   - Session validation
+   - File existence checks
+   - Proper HTTP status codes
 
 ### Bulk Appraisal Flow
 

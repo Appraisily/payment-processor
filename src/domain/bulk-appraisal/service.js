@@ -151,6 +151,18 @@ class BulkAppraisalService {
 
   async finalizeSession(sessionId, customerInfo) {
     try {
+      const pricePerItem = {
+        regular: 2500,    // $25 per item
+        insurance: 5000,  // $50 per item
+        tax: 7500        // $75 per item
+      };
+
+      const appraisalTypeDescriptions = {
+        regular: 'Standard art appraisal',
+        insurance: 'Insurance valuation appraisal',
+        tax: 'Tax documentation appraisal'
+      };
+
       // Get session status to verify files exist
       const sessionStatus = await this.getSessionStatus(sessionId);
       
@@ -166,6 +178,7 @@ class BulkAppraisalService {
         email: customerInfo.email || '',
         phone: customerInfo.phone || '',
         notes: customerInfo.notes || '',
+        appraisal_type: customerInfo.appraisal_type,
         files_count: sessionStatus.files.length,
         finalized_at: new Date().toISOString()
       }));
@@ -178,17 +191,18 @@ class BulkAppraisalService {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `Bulk Appraisal - ${sessionStatus.files.length} items`,
-              description: `Bulk art appraisal service for ${sessionStatus.files.length} items`
+              name: `${appraisalTypeDescriptions[customerInfo.appraisal_type]} - ${sessionStatus.files.length} items`,
+              description: `Bulk ${customerInfo.appraisal_type} appraisal service for ${sessionStatus.files.length} items`
             },
-            unit_amount: 2500 * sessionStatus.files.length // $25 per item
+            unit_amount: pricePerItem[customerInfo.appraisal_type] * sessionStatus.files.length
           },
           quantity: 1
         }],
         customer_email: customerInfo.email,
         metadata: {
           bulk_session_id: sessionId,
-          items_count: sessionStatus.files.length.toString()
+          items_count: sessionStatus.files.length.toString(),
+          appraisal_type: customerInfo.appraisal_type
         },
         mode: 'payment',
         success_url: `${process.env.FRONTEND_URL || 'https://www.appraisily.com'}/bulk-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -213,13 +227,14 @@ class BulkAppraisalService {
         prefix: `${sessionId}/`
       });
 
-      // Get customer info if it exists
-      let customerEmail;
+      // Get customer info and appraisal type if they exist
+      let customerEmail, appraisalType;
       const customerInfoFile = files.find(file => file.name.endsWith('customer_info.json'));
       if (customerInfoFile) {
         const [content] = await customerInfoFile.download();
         const customerInfo = JSON.parse(content.toString());
         customerEmail = customerInfo.email;
+        appraisalType = customerInfo.appraisal_type;
       }
 
       // Process image files
@@ -253,6 +268,7 @@ class BulkAppraisalService {
         session: {
           id: sessionId,
           customer_email: customerEmail,
+          appraisal_type: appraisalType || null,
           created_at,
           expires_at,
           items: filesList

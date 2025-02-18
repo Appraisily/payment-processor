@@ -209,13 +209,23 @@ function setupBulkAppraisalRoutes(app, config) {
 
   router.post('/finalize/:sessionId', express.json(), async (req, res) => {
     const { sessionId } = req.params;
-    const { email, phone, notes } = req.body;
+    const { email, phone, notes, appraisal_type } = req.body;
+
+    // Validate appraisal type
+    const validTypes = ['regular', 'insurance', 'tax'];
+    if (!appraisal_type || !validTypes.includes(appraisal_type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid appraisal type. Must be one of: regular, insurance, tax'
+      });
+    }
 
     try {
       const { checkout_url } = await bulkAppraisalService.finalizeSession(sessionId, {
         email,
         phone,
         notes
+        appraisal_type
       });
 
       res.status(200).json({
