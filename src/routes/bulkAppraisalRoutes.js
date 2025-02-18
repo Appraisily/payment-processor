@@ -46,8 +46,27 @@ function setupBulkAppraisalRoutes(app, config) {
   router.post('/upload/:sessionId', upload.single('file'), async (req, res) => {
     const { sessionId } = req.params;
     const { description, category, position } = req.body;
+
+    // Log detailed request information
+    console.log('Bulk upload request received:', {
+      session_id: sessionId,
+      content_type: req.headers['content-type'],
+      content_length: req.headers['content-length'],
+      body_fields: {
+        description: description || 'not provided',
+        category: category || 'not provided',
+        position: position || 'not provided'
+      },
+      file: req.file ? {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        buffer_exists: !!req.file.buffer
+      } : 'no file uploaded'
+    });
     
     if (!req.file) {
+      console.error('File upload failed: No file provided in request');
       return res.status(400).json({
         success: false,
         error: 'No file provided'
@@ -55,6 +74,12 @@ function setupBulkAppraisalRoutes(app, config) {
     }
 
     try {
+      console.log('Processing file upload:', {
+        filename: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+
       const { file_id, url } = await bulkAppraisalService.uploadFile(sessionId, req.file, {
         description,
         category,
