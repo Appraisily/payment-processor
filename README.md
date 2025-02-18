@@ -8,14 +8,16 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
   - Stripe webhook handling for both test and live modes
   - Secure payment verification with signature validation
   - Automatic transaction recording in Google Sheets
-  - Support for multiple payment link types (Regular, Insurance, IRS)
+  - Support for multiple payment link types (Regular, Insurance, IRS, Bulk)
   - Automatic amount conversion from Stripe's cents format
+  - Bulk appraisal support with dynamic pricing
 
 - **Data Management**
   - Google Sheets integration for sales and appraisals tracking
   - Comprehensive error logging system
   - Secure secret management via Google Cloud Secret Manager
   - Caching system for configuration
+  - Bulk file management in Google Cloud Storage
 
 - **WordPress Integration**
   - Custom post type handling for appraisals
@@ -28,6 +30,8 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
   - Format conversion to JPEG
   - Size limits and validation
   - EXIF data handling
+  - Bulk image processing and storage
+  - Signed URL generation for secure access
 
 - **Email Notifications**
   - SendGrid integration
@@ -40,6 +44,8 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
   - API authentication
   - Secure secret management
   - Input validation
+  - Secure file upload handling
+  - Session-based access control
 
 ## Project Structure
 
@@ -49,6 +55,8 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 │   │   ├── appraisal/        # Appraisal domain
 │   │   │   ├── repositories/ # Repository implementations
 │   │   │   │   ├── appraisers.repository.js  # Appraisers backend integration
+│   │   ├── bulk-appraisal/   # Bulk appraisal domain
+│   │   │   ├── service.js    # Bulk appraisal business logic
 │   │   │   │   ├── sheets.repository.js      # Google Sheets operations
 │   │   │   │   ├── storage.repository.js     # GCS storage operations
 │   │   │   │   └── wordpress.repository.js   # WordPress operations
@@ -138,6 +146,105 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 
 ## API Endpoints
 
+### Bulk Appraisal API
+
+#### 1. Initialize Bulk Session
+```
+POST /api/bulk-appraisals/init
+```
+
+Response:
+```json
+{
+  "success": true,
+  "session_id": "string",
+  "expires_at": "string" // ISO date
+}
+```
+
+#### 2. Upload Individual File
+```
+POST /api/bulk-appraisals/upload/{sessionId}
+```
+
+Request:
+- Content-Type: multipart/form-data
+- Body:
+  - file: File (required, max 10MB)
+  - description: string (optional)
+  - category: string (optional)
+  - position: number (required)
+
+Response:
+```json
+{
+  "success": true,
+  "file_id": "string",
+  "url": "string" // GCS signed URL
+}
+```
+
+#### 3. Get Session Status
+```
+GET /api/bulk-appraisals/session/{sessionId}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "session_id": "string",
+  "files": [
+    {
+      "id": "string",
+      "url": "string",
+      "description": "string",
+      "category": "string",
+      "position": number,
+      "status": "uploaded" | "processing" | "error",
+      "error": "string"
+    }
+  ],
+  "expires_at": "string"
+}
+```
+
+#### 4. Remove File
+```
+DELETE /api/bulk-appraisals/upload/{sessionId}/{fileId}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "error": "string"
+}
+```
+
+#### 5. Finalize Session
+```
+POST /api/bulk-appraisals/finalize/{sessionId}
+```
+
+Request:
+```json
+{
+  "email": "string",
+  "phone": "string",
+  "notes": "string"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "redirect_url": "string", // Stripe checkout URL
+  "error": "string"
+}
+```
+
 ### Stripe Webhooks
 - POST `/stripe-webhook`: Live mode webhook handler
 - POST `/stripe-webhook-test`: Test mode webhook handler
@@ -205,6 +312,7 @@ A Node.js service that handles Stripe payments, records transactions, manages ar
 ## Configuration
 
 ### Required Secrets (Google Cloud Secret Manager)
+- `GCS_BULK_APPRAISAL_BUCKET`: Bucket for bulk appraisal files
 - `STRIPE_SECRET_KEY_TEST`
 - `STRIPE_SECRET_KEY_LIVE`
 - `STRIPE_WEBHOOK_SECRET_TEST`
@@ -270,6 +378,32 @@ The service implements comprehensive error handling:
    - Proper HTTP status codes
 
 ## Development
+
+### Bulk Appraisal Flow
+
+1. **Session Initialization**
+   - Client requests new session
+   - Server generates UUID
+   - Creates GCS folder structure
+   - Returns session details
+
+2. **File Upload**
+   - Client uploads files individually
+   - Server processes and stores files
+   - Generates signed URLs
+   - Maintains file order
+
+3. **Session Management**
+   - Status tracking
+   - File listing
+   - Metadata management
+   - Expiration handling
+
+4. **Finalization**
+   - Customer information collection
+   - Stripe checkout session creation
+   - Dynamic pricing ($25 per item)
+   - Success/cancel URL handling
 
 ### API Data Structures
 
@@ -342,6 +476,35 @@ The service provides:
 - Payment processing status monitoring
 
 ## Best Practices
+
+### Bulk Appraisal Implementation
+
+1. **Session Management**
+   - Unique session IDs with UUID v4
+   - 24-hour expiration
+   - Secure file storage in GCS
+   - Customer metadata preservation
+
+2. **File Handling**
+   - Server-side file ID generation
+   - Position-based ordering
+   - Automatic JPEG conversion
+   - Signed URL generation
+   - Maximum file size enforcement
+
+3. **Security**
+   - Session-based access control
+   - Secure URL generation
+   - File type validation
+   - Size limit enforcement
+   - Metadata validation
+
+4. **Error Handling**
+   - Comprehensive error logging
+   - Client-friendly error messages
+   - Session validation
+   - File existence checks
+   - Proper HTTP status codes
 
 1. **Code Organization**
    - Modular architecture

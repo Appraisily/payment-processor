@@ -133,11 +133,11 @@ function setupBulkAppraisalRoutes(app, config) {
     const { sessionId } = req.params;
 
     try {
-      const sessionStatus = await bulkAppraisalService.getSessionStatus(sessionId);
+      const result = await bulkAppraisalService.getSessionStatus(sessionId);
 
       res.status(200).json({
         success: true,
-        ...sessionStatus
+        ...result
       });
     } catch (error) {
       console.error('Error retrieving session status:', error);

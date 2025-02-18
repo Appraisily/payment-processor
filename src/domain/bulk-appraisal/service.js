@@ -163,12 +163,24 @@ class BulkAppraisalService {
   async getSessionStatus(sessionId) {
     try {
       const bucket = this.storage.bucket(this.config.GCS_BULK_APPRAISAL_BUCKET);
+      
+      // Get all files in the session folder
       const [files] = await bucket.getFiles({
         prefix: `${sessionId}/`
       });
 
+      // Get customer info if it exists
+      let customerEmail;
+      const customerInfoFile = files.find(file => file.name.endsWith('customer_info.json'));
+      if (customerInfoFile) {
+        const [content] = await customerInfoFile.download();
+        const customerInfo = JSON.parse(content.toString());
+        customerEmail = customerInfo.email;
+      }
+
+      // Process image files
       const filesList = await Promise.all(files
-        .filter(file => !file.name.endsWith('.folder'))
+        .filter(file => !file.name.endsWith('.folder') && !file.name.endsWith('customer_info.json'))
         .map(async (file) => {
           const [metadata] = await file.getMetadata();
           const [url] = await file.getSignedUrl({
@@ -181,25 +193,26 @@ class BulkAppraisalService {
           
           return {
             id: fileId,
-            url,
+            file_url: url,
             description: metadata.metadata.description || '',
             category: metadata.metadata.category || 'uncategorized',
-            position: parseInt(metadata.metadata.position, 10),
-            status: 'uploaded',
-            error: undefined
+            status: 'processed'
           };
         }));
-
-      filesList.sort((a, b) => a.position - b.position);
 
       const folderFile = files.find(file => file.name.endsWith('.folder'));
       const sessionCreationTime = folderFile ? new Date(folderFile.metadata.timeCreated) : new Date();
       const expires_at = new Date(sessionCreationTime.getTime() + 24 * 60 * 60 * 1000).toISOString();
+      const created_at = sessionCreationTime.toISOString();
 
       return {
-        session_id: sessionId,
-        files: filesList,
-        expires_at
+        session: {
+          id: sessionId,
+          customer_email: customerEmail,
+          created_at,
+          expires_at,
+          items: filesList
+        }
       };
     } catch (error) {
       console.error('Error retrieving session status:', error);
