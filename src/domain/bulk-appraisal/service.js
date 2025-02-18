@@ -107,6 +107,48 @@ class BulkAppraisalService {
     }
   }
 
+  async updateItemDescription(sessionId, itemId, description) {
+    try {
+      const bucket = this.storage.bucket(this.config.GCS_BULK_APPRAISAL_BUCKET);
+      
+      // Find the file
+      const [files] = await bucket.getFiles({
+        prefix: `${sessionId}/`
+      });
+
+      const fileToUpdate = files.find(file => 
+        file.name.includes(`_${itemId}.jpg`)
+      );
+
+      if (!fileToUpdate) {
+        throw new Error('Session or item not found');
+      }
+
+      // Get current metadata
+      const [metadata] = await fileToUpdate.getMetadata();
+      
+      // Update metadata with new description
+      await fileToUpdate.setMetadata({
+        metadata: {
+          ...metadata.metadata,
+          description: description,
+          updated_at: new Date().toISOString()
+        }
+      });
+
+      console.log('Item description updated:', {
+        session_id: sessionId,
+        item_id: itemId,
+        description_length: description.length
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error updating item description:', error);
+      throw error;
+    }
+  }
+
   async publishToCRM(message) {
     try {
       const topicName = process.env.PUBSUB_CRM_NAME;

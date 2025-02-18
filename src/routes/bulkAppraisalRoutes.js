@@ -207,6 +207,46 @@ function setupBulkAppraisalRoutes(app, config) {
     }
   });
 
+  router.put('/description', express.json(), async (req, res) => {
+    const { session_id, item_id, description, image_id } = req.body;
+
+    if (!session_id || !item_id || !description) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields'
+      });
+    }
+
+    try {
+      await bulkAppraisalService.updateItemDescription(session_id, item_id, description);
+
+      res.status(200).json({
+        success: true,
+        message: 'Description updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating item description:', error);
+      await logError(config, {
+        severity: 'Error',
+        scriptName: 'bulkAppraisalRoutes',
+        errorCode: 'DESCRIPTION_UPDATE_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({
+          session_id,
+          item_id,
+          description_length: description.length
+        })
+      });
+
+      const statusCode = error.message === 'Session or item not found' ? 404 : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   router.post('/finalize/:sessionId', express.json(), async (req, res) => {
     const { sessionId } = req.params;
     const { email, phone, notes, appraisal_type } = req.body;
