@@ -18,20 +18,23 @@ async function initializeApp() {
     // Configure CORS
     const corsOptions = {
       origin: function (origin, callback) {
-        if (process.env.NODE_ENV !== 'production' || !origin) {
+        // Allow requests with no origin (like mobile apps, curl, etc)
+        if (!origin) {
           return callback(null, true);
         }
         
+        // Allow all webcontainer domains and appraisily.com
         if (origin.endsWith('appraisily.com') || 
-            origin.includes('webcontainer.io') || 
-            origin.includes('webcontainer-api.io')) {
+            origin.includes('webcontainer') || 
+            origin.includes('stackblitz.io') ||
+            process.env.NODE_ENV !== 'production') {
           return callback(null, true);
         }
         
         callback(new Error('Not allowed by CORS'));
       },
-      methods: ['GET', 'POST'],
-      allowedHeaders: ['Content-Type', 'x-shared-secret', 'authorization'],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'x-shared-secret', 'authorization', 'Origin', 'Accept'],
       credentials: true
     };
     
