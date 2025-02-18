@@ -224,7 +224,7 @@ function setupBulkAppraisalRoutes(app, config) {
       const { checkout_url } = await bulkAppraisalService.finalizeSession(sessionId, {
         email,
         phone,
-        notes
+        notes,
         appraisal_type
       });
 
