@@ -1,55 +1,29 @@
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
-const { Storage } = require('@google-cloud/storage');
+const multer = require('multer');
+const BulkAppraisalService = require('../domain/bulk-appraisal/service');
 const { logError } = require('../utils/error/logger');
 
 function setupBulkAppraisalRoutes(app, config) {
   const router = express.Router();
-  const storage = new Storage({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID
+  const bulkAppraisalService = new BulkAppraisalService(config);
+
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024,
+      files: 1
+    }
   });
 
   router.post('/init', async (req, res) => {
     try {
-      // Generate session ID
-      const session_id = `bulk_${uuidv4()}`;
+      const { session_id, expires_at } = await bulkAppraisalService.initializeSession();
       
-      // Calculate expiration date (24h from now)
-      const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-      // Send immediate response
       res.status(200).json({
         success: true,
         session_id,
         expires_at
       });
-
-      // Create GCS folder in background
-      const bucket = storage.bucket(config.GCS_BULK_APPRAISAL_BUCKET);
-      try {
-        // Create an empty file to represent the folder
-        const folderFile = bucket.file(`${session_id}/.folder`);
-        await folderFile.save('');
-        
-        console.log('Created GCS folder for bulk session:', {
-          session_id,
-          bucket: config.GCS_BULK_APPRAISAL_BUCKET,
-          expires_at
-        });
-      } catch (error) {
-        console.error('Error creating GCS folder:', error);
-        await logError(config, {
-          severity: 'Error',
-          scriptName: 'bulkAppraisalRoutes',
-          errorCode: 'GCS_FOLDER_CREATION_ERROR',
-          errorMessage: error.message,
-          stackTrace: error.stack,
-          additionalContext: JSON.stringify({ 
-            session_id,
-            bucket: config.GCS_BULK_APPRAISAL_BUCKET
-          })
-        });
-      }
     } catch (error) {
       console.error('Error initializing bulk session:', error);
       await logError(config, {
@@ -60,13 +34,167 @@ function setupBulkAppraisalRoutes(app, config) {
         stackTrace: error.stack
       });
       
-      // Only send error response if we haven't sent the success response yet
       if (!res.headersSent) {
         res.status(500).json({
           success: false,
           message: 'Failed to initialize bulk session'
         });
       }
+    }
+  });
+
+  router.post('/upload/:sessionId', upload.single('file'), async (req, res) => {
+    const { sessionId } = req.params;
+    const { description, category, position } = req.body;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file provided'
+      });
+    }
+
+    try {
+      const { file_id, url } = await bulkAppraisalService.uploadFile(sessionId, req.file, {
+        description,
+        category,
+        position: parseInt(position, 10)
+      });
+
+      console.log('File uploaded successfully:', {
+        session_id: sessionId,
+        file_id,
+        position,
+        category
+      });
+
+      res.status(200).json({
+        success: true,
+        file_id,
+        url
+      });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      await logError(config, {
+        severity: 'Error',
+        scriptName: 'bulkAppraisalRoutes',
+        errorCode: 'FILE_UPLOAD_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({
+          session_id: sessionId,
+          filename: req.file?.originalname,
+          position,
+          category
+        })
+      });
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to upload file'
+      });
+    }
+  });
+
+  router.delete('/upload/:sessionId/:fileId', async (req, res) => {
+    const { sessionId, fileId } = req.params;
+
+    try {
+      await bulkAppraisalService.deleteFile(sessionId, fileId);
+
+      res.status(200).json({
+        success: true
+      });
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      await logError(config, {
+        severity: 'Error',
+        scriptName: 'bulkAppraisalRoutes',
+        errorCode: 'FILE_DELETE_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({
+          session_id: sessionId,
+          file_id: fileId
+        })
+      });
+
+      const statusCode = error.message === 'File not found' ? 404 : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: error.message === 'File not found' ? 
+          'File not found' : 
+          'Failed to delete file'
+      });
+    }
+  });
+
+  router.get('/session/:sessionId', async (req, res) => {
+    const { sessionId } = req.params;
+
+    try {
+      const sessionStatus = await bulkAppraisalService.getSessionStatus(sessionId);
+
+      res.status(200).json({
+        success: true,
+        ...sessionStatus
+      });
+    } catch (error) {
+      console.error('Error retrieving session status:', error);
+      await logError(config, {
+        severity: 'Error',
+        scriptName: 'bulkAppraisalRoutes',
+        errorCode: 'SESSION_STATUS_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({
+          session_id: sessionId
+        })
+      });
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve session status'
+      });
+    }
+  });
+
+  router.post('/finalize/:sessionId', express.json(), async (req, res) => {
+    const { sessionId } = req.params;
+    const { email, phone, notes } = req.body;
+
+    try {
+      const { checkout_url } = await bulkAppraisalService.finalizeSession(sessionId, {
+        email,
+        phone,
+        notes
+      });
+
+      res.status(200).json({
+        success: true,
+        redirect_url: checkout_url
+      });
+    } catch (error) {
+      console.error('Error finalizing bulk session:', error);
+      await logError(config, {
+        severity: 'Error',
+        scriptName: 'bulkAppraisalRoutes',
+        errorCode: 'BULK_SESSION_FINALIZE_ERROR',
+        errorMessage: error.message,
+        stackTrace: error.stack,
+        additionalContext: JSON.stringify({
+          session_id: sessionId,
+          has_email: !!email,
+          has_phone: !!phone,
+          has_notes: !!notes
+        })
+      });
+
+      const statusCode = error.message === 'No files uploaded in this session' ? 400 : 500;
+      res.status(statusCode).json({
+        success: false,
+        error: error.message
+      });
     }
   });
 
