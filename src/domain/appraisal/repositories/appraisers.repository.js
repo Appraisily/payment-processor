@@ -8,14 +8,18 @@ class AppraisersRepository {
 
   async notifySubmission(submission, wordpressUrl, uploadedMedia) {
     try {
-      // Ensure all required fields are present with fallbacks
+      // Extract post_id from WordPress URL
+      const postId = wordpressUrl?.match(/post=(\d+)/)?.[1];
+      
+      if (!postId || !wordpressUrl) {
+        throw new Error('Missing required WordPress post information');
+      }
+
       const payload = {
         session_id: submission.session_id,
         customer_email: submission.customer_email || '',
-        customer_name: submission.customer_name || '',
-        description: submission.description || '',
-        payment_id: submission.payment_id || '',
-        wordpress_url: wordpressUrl || '',
+        post_id: postId,
+        post_edit_url: wordpressUrl,
         images: {
           main: uploadedMedia.main?.url || '',
           signature: uploadedMedia.signature?.url || '',
@@ -26,14 +30,12 @@ class AppraisersRepository {
       console.log('Sending payload to appraisers backend:', {
         session_id: payload.session_id,
         customer_email: payload.customer_email,
-        has_description: !!payload.description,
-        wordpress_url: payload.wordpress_url,
+        post_id: payload.post_id,
+        post_edit_url: payload.post_edit_url,
         images: Object.keys(payload.images).filter(key => payload.images[key])
       });
 
-      await this.appraisersClient.notifySubmission({
-        ...payload
-      });
+      await this.appraisersClient.notifySubmission(payload);
     } catch (error) {
       console.error('Failed to notify appraisers backend:', error);
     }
