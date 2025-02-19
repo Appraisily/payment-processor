@@ -8,10 +8,19 @@ class SheetsRepository {
 
   async recordSubmission(submission, wordpressEditUrl = '') {
     try {
+      console.log('Recording submission in sheets:', {
+        session_id: submission.session_id,
+        customer_email: submission.customer_email,
+        customer_name: submission.customer_name,
+        description_length: submission.description?.length,
+        wordpress_url: wordpressEditUrl
+      });
+
       await this.sheetsClient.recordSubmission({
         session_id: submission.session_id,
         customer_email: submission.customer_email,
         customer_name: submission.customer_name,
+        description: submission.description,
         wordpressEditUrl
       });
     } catch (error) {
