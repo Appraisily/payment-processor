@@ -1,13 +1,10 @@
 const { v4: uuidv4 } = require('uuid');
 const { logError } = require('../../../utils/error/logger');
-const StorageRepository = require('../repositories/storage.repository');
-const CustomerRepository = require('../repositories/customer.repository');
 
 class SessionService {
-  constructor(config) {
+  constructor(config, repositories) {
     this.config = config;
-    this.storageRepo = new StorageRepository(config);
-    this.customerRepo = new CustomerRepository(config);
+    this.repositories = repositories;
   }
 
   async initializeSession() {
@@ -15,7 +12,7 @@ class SessionService {
     const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     try {
-      await this.storageRepo.createSessionFolder(`bulk_${session_id}`);
+      await this.repositories.storage.createSessionFolder(`bulk_${session_id}`);
       return { session_id: `bulk_${session_id}`, expires_at };
     } catch (error) {
       await logError(this.config, {
@@ -32,17 +29,19 @@ class SessionService {
 
   async getSessionStatus(sessionId) {
     try {
-      const customerInfo = await this.customerRepo.getCustomerInfo(sessionId);
-      const files = await this.storageRepo.getSessionFiles(sessionId);
-      const { created_at, expires_at } = await this.storageRepo.getSessionTimes(sessionId);
+      const [customerInfo, files, times] = await Promise.all([
+        this.repositories.customer.getCustomerInfo(sessionId),
+        this.repositories.storage.getSessionFiles(sessionId),
+        this.repositories.storage.getSessionTimes(sessionId)
+      ]);
 
       return {
         session: {
           id: sessionId,
           customer_email: customerInfo.email,
           appraisal_type: customerInfo.appraisal_type || null,
-          created_at,
-          expires_at,
+          created_at: times.created_at,
+          expires_at: times.expires_at,
           items: files
         }
       };

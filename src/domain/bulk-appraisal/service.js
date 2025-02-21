@@ -1,14 +1,14 @@
-const SessionService = require('./services/session.service');
-const FileService = require('./services/file.service');
+const createRepositories = require('./repositories');
+const SessionService = require('./services/session.service'); 
+const FileService = require('./services/file.service'); 
 const NotificationService = require('./services/notification.service');
-const CustomerRepository = require('./repositories/customer.repository'); 
 
 class BulkAppraisalService {
   constructor(config) {
-    this.sessionService = new SessionService(config);
-    this.fileService = new FileService(config);
+    this.repositories = createRepositories(config);
+    this.sessionService = new SessionService(config, this.repositories);
+    this.fileService = new FileService(config, this.repositories);
     this.notificationService = new NotificationService(config);
-    this.customerRepo = new CustomerRepository(config);
     this.config = config;
   }
 
@@ -29,7 +29,7 @@ class BulkAppraisalService {
   }
 
   async updateSessionEmail(sessionId, email) {
-    await this.customerRepo.updateCustomerEmail(sessionId, email);
+    await this.repositories.customer.updateCustomerEmail(sessionId, email);
     await this.notificationService.publishToCRM({
       crmProcess: "bulkAppraisalEmailUpdate",
       customer: { email },
@@ -44,7 +44,7 @@ class BulkAppraisalService {
   }
 
   async publishFinalizationMessage(sessionId, appraisalType, sessionStatus) {
-    const customerInfo = await this.customerRepo.getCustomerInfo(sessionId);
+    const customerInfo = await this.repositories.customer.getCustomerInfo(sessionId);
     await this.notificationService.publishFinalizationMessage(
       sessionId,
       appraisalType,
