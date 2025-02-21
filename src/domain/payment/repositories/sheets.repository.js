@@ -66,9 +66,11 @@ class SheetsRepository {
 
     let productName = this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product';
     let itemCount = 1;
+    let bucketPath = '';
 
     if (isBulkOrder) {
       const bulkSessionId = session.client_reference_id.replace('bulk_', '');
+      bucketPath = `${this.config.GCS_BULK_APPRAISAL_BUCKET}/${session.client_reference_id}`;
       const StorageRepository = require('../../bulk-appraisal/repositories/storage.repository');
       const storageRepo = new StorageRepository(this.config);
       const files = await storageRepo.getSessionFiles(bulkSessionId);
@@ -78,7 +80,7 @@ class SheetsRepository {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
-      range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!A:F`,
+      range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!A:G`,
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       resource: {
@@ -89,6 +91,7 @@ class SheetsRepository {
           session.customer_details?.email || '',
           session.customer_details?.name || '',
           itemCount > 1 ? `BULK ORDER (${itemCount} items)` : 'PENDING INFO',
+          bucketPath
         ]],
       },
     });
