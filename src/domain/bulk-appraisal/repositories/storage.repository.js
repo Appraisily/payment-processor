@@ -112,3 +112,5 @@ class StorageRepository {
     };
   }
 }
+
+module.exports = StorageRepository;
