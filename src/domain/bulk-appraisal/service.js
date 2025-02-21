@@ -63,3 +63,5 @@ class BulkAppraisalService {
     return await this.sessionService.getSessionStatus(sessionId);
   }
 }
+
+module.exports = BulkAppraisalService;
