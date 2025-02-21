@@ -112,8 +112,21 @@ class PaymentRepository {
   async recordPendingAppraisal(session) {
     const auth = await this.getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
-
-    const productDetails = this.config.PAYMENT_LINKS[session.payment_link] || { productName: 'Unknown Product' };
+    
+    // Handle product name for bulk orders with item count
+    const isBulkOrder = session.client_reference_id?.startsWith('bulk_');
+    let productName;
+    
+    if (isBulkOrder) {
+      // Extract bulk session ID and get session status
+      const bulkSessionId = session.client_reference_id.replace('bulk_', '');
+      const bulkAppraisalService = new (require('../bulk-appraisal/service'))(this.config);
+      const sessionStatus = await bulkAppraisalService.getSessionStatus(bulkSessionId);
+      const itemCount = sessionStatus.session.items.length;
+      productName = `Bulk${itemCount}`;
+    } else {
+      productName = this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product';
+    }
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
@@ -123,7 +136,7 @@ class PaymentRepository {
       resource: {
         values: [[
           new Date(session.created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }),
-          productDetails.productName,
+          productName,
           session.id,
           session.customer_details?.email || '',
           session.customer_details?.name || '',
