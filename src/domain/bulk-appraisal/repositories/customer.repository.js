@@ -48,3 +48,5 @@ class CustomerRepository {
     return updatedInfo;
   }
 }
+
+module.exports = CustomerRepository;
