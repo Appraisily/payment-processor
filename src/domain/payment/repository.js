@@ -113,32 +113,19 @@ class PaymentRepository {
     const auth = await this.getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
 
-    let productName = this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product';
-    let itemCount = 1;
-
-    // Handle bulk orders
-    if (session.client_reference_id?.startsWith('bulk_')) {
-      const bulkSessionId = session.client_reference_id.replace('bulk_', '');
-      const StorageRepository = require('../bulk-appraisal/repositories/storage.repository');
-      const storageRepo = new StorageRepository(this.config);
-      const files = await storageRepo.getSessionFiles(bulkSessionId);
-      itemCount = files.length;
-      productName = `Bulk Appraisal (${itemCount} items) - ${session.metadata?.appraisal_type || 'Regular'}`;
-    }
-
     await sheets.spreadsheets.values.append({
-      spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+      spreadsheetId: config.PENDING_APPRAISALS_SPREADSHEET_ID,
       range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!A:F`,
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       resource: {
         values: [[
-          new Date(session.created * 1000).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }),
-          productName,
+          new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }),
+          'Bulk',
           session.id,
           session.customer_details?.email || '',
           session.customer_details?.name || '',
-          itemCount > 1 ? `BULK ORDER (${itemCount} items)` : 'PENDING INFO',
+          'PAID'
         ]],
       },
     });
