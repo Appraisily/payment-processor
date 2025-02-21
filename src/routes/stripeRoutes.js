@@ -45,11 +45,13 @@ function setupStripeRoutes(app, config) {
       res.json({
         customer_details: {
           name: session.customer_details?.name,
-          email: session.customer_details?.email,
+          email: session.customer_details?.email
         },
         amount_total: session.amount_total / 100,
         currency: session.currency,
         payment_status: session.payment_status,
+        client_reference_id: session.client_reference_id,
+        metadata: session.metadata
         client_reference_id: session.client_reference_id
       });
     } catch (error) {
