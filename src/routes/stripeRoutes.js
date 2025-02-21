@@ -50,9 +50,8 @@ function setupStripeRoutes(app, config) {
         amount_total: session.amount_total / 100,
         currency: session.currency,
         payment_status: session.payment_status,
-        client_reference_id: session.client_reference_id,
-        metadata: session.metadata
         client_reference_id: session.client_reference_id
+        metadata: session.metadata
       });
     } catch (error) {
       await logError(config, {
