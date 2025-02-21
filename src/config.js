@@ -42,7 +42,8 @@ class Config {
       // SendGrid Configuration
       SENDGRID_API_KEY: await this.getSecret('SENDGRID_API_KEY'),
       EMAIL_SENDER: await this.getSecret('SENDGRID_EMAIL'),
-      SENDGRID_TEMPLATE_ID: await this.getSecret('SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED'),
+      SENDGRID_TEMPLATE_ID: await this.getSecret('SEND_GRID_TEMPLATE_NOTIFY_PAYMENT_RECEIVED'), 
+      SENDGRID_TEMPLATE_BULK_ID: await this.getSecret('SEND_GRID_TEMPLATE_NOTIFY_BULK_PAYMENT_RECEIVED'),
 
       // WordPress Configuration
       WORDPRESS_API_URL: await this.getSecret('WORDPRESS_API_URL'),
