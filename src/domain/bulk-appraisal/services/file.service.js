@@ -18,3 +18,5 @@ class FileService {
     return await this.storageRepo.updateItemDescription(sessionId, itemId, description);
   }
 }
+
+module.exports = FileService;

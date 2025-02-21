@@ -1,16 +1,15 @@
 const SessionService = require('./services/session.service');
 const FileService = require('./services/file.service');
-const PaymentService = require('./services/payment.service');
 const NotificationService = require('./services/notification.service');
-const CustomerRepository = require('./repositories/customer.repository');
+const CustomerRepository = require('./repositories/customer.repository'); 
 
 class BulkAppraisalService {
   constructor(config) {
     this.sessionService = new SessionService(config);
     this.fileService = new FileService(config);
-    this.paymentService = new PaymentService(config);
     this.notificationService = new NotificationService(config);
     this.customerRepo = new CustomerRepository(config);
+    this.config = config;
   }
 
   async initializeSession() {
@@ -56,7 +55,23 @@ class BulkAppraisalService {
 
   async finalizeSession(sessionId, appraisalType) {
     const sessionStatus = await this.getSessionStatus(sessionId);
-    return await this.paymentService.finalizeSession(sessionId, appraisalType, sessionStatus);
+    
+    if (!sessionStatus.session.items.length) {
+      throw new Error('No files uploaded in this session');
+    }
+
+    // Get the appropriate payment link based on appraisal type
+    const paymentLinkId = Object.entries(this.config.PAYMENT_LINKS)
+      .find(([_, value]) => value.productName.toLowerCase() === appraisalType.toLowerCase())?.[0];
+
+    if (!paymentLinkId) {
+      throw new Error(`Invalid appraisal type: ${appraisalType}`);
+    }
+
+    // Return the payment link URL
+    return {
+      checkout_url: `https://buy.stripe.com/${paymentLinkId}`
+    };
   }
 
   async getSessionStatus(sessionId) {

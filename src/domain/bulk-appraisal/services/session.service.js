@@ -11,12 +11,12 @@ class SessionService {
   }
 
   async initializeSession() {
-    const session_id = `bulk_${uuidv4()}`;
+    const session_id = uuidv4();
     const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     try {
-      await this.storageRepo.createSessionFolder(session_id);
-      return { session_id, expires_at };
+      await this.storageRepo.createSessionFolder(`bulk_${session_id}`);
+      return { session_id: `bulk_${session_id}`, expires_at };
     } catch (error) {
       await logError(this.config, {
         severity: 'Error',
@@ -32,15 +32,15 @@ class SessionService {
 
   async getSessionStatus(sessionId) {
     try {
-      const { customerEmail, appraisalType } = await this.customerRepo.getCustomerInfo(sessionId);
+      const customerInfo = await this.customerRepo.getCustomerInfo(sessionId);
       const files = await this.storageRepo.getSessionFiles(sessionId);
       const { created_at, expires_at } = await this.storageRepo.getSessionTimes(sessionId);
 
       return {
         session: {
           id: sessionId,
-          customer_email: customerEmail,
-          appraisal_type: appraisalType || null,
+          customer_email: customerInfo.email,
+          appraisal_type: customerInfo.appraisal_type || null,
           created_at,
           expires_at,
           items: files
@@ -52,3 +52,5 @@ class SessionService {
     }
   }
 }
+
+module.exports = SessionService;
