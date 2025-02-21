@@ -112,20 +112,18 @@ class PaymentRepository {
   async recordPendingAppraisal(session) {
     const auth = await this.getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
-    
-    // Handle product name for bulk orders with item count
-    const isBulkOrder = session.client_reference_id?.startsWith('bulk_');
-    let productName;
-    
-    if (isBulkOrder) {
-      // Extract bulk session ID and get session status
+
+    let productName = this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product';
+    let itemCount = 1;
+
+    // Handle bulk orders
+    if (session.client_reference_id?.startsWith('bulk_')) {
       const bulkSessionId = session.client_reference_id.replace('bulk_', '');
-      const bulkAppraisalService = new (require('../bulk-appraisal/service'))(this.config);
-      const sessionStatus = await bulkAppraisalService.getSessionStatus(bulkSessionId);
-      const itemCount = sessionStatus.session.items.length;
-      productName = `Bulk${itemCount}`;
-    } else {
-      productName = this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product';
+      const StorageRepository = require('../bulk-appraisal/repositories/storage.repository');
+      const storageRepo = new StorageRepository(this.config);
+      const files = await storageRepo.getSessionFiles(bulkSessionId);
+      itemCount = files.length;
+      productName = `Bulk Appraisal (${itemCount} items) - ${session.metadata?.appraisal_type || 'Regular'}`;
     }
 
     await sheets.spreadsheets.values.append({
@@ -140,7 +138,7 @@ class PaymentRepository {
           session.id,
           session.customer_details?.email || '',
           session.customer_details?.name || '',
-          'PENDING INFO',
+          itemCount > 1 ? `BULK ORDER (${itemCount} items)` : 'PENDING INFO',
         ]],
       },
     });
