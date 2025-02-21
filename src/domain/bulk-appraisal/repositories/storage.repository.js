@@ -58,20 +58,27 @@ class StorageRepository {
   async updateItemDescription(sessionId, itemId, description) {
     const [files] = await this.bucket.getFiles({ prefix: `${sessionId}/` });
     const fileToUpdate = files.find(file => file.name.includes(`_${itemId}.jpg`));
-
+    
     if (!fileToUpdate) {
       throw new Error('Session or item not found');
     }
-
+    
     const [metadata] = await fileToUpdate.getMetadata();
+    
+    // Preserve all existing metadata and update only what we need
     await fileToUpdate.setMetadata({
+      contentType: metadata.contentType,
       metadata: {
-        ...metadata.metadata,
+        description: description,
+        category: metadata.metadata.category || 'uncategorized',
+        position: metadata.metadata.position,
+        originalName: metadata.metadata.originalName,
+        uploadTime: metadata.metadata.uploadTime,
         description,
         updated_at: new Date().toISOString()
       }
     });
-
+    
     return true;
   }
 
