@@ -1,6 +1,35 @@
 const { google } = require('googleapis');
-const { getAuthClient, findRowBySessionId, updateCell } = require('./utils');
-const { insertNewSubmission, updateExistingSubmission, updateMediaUrls } = require('./operations');
+
+// Utility functions
+async function getAuthClient() {
+  const auth = new google.auth.GoogleAuth({
+    scopes: ['https://www.googleapis.com/auth/spreadsheets']
+  });
+  return await auth.getClient();
+}
+
+async function findRowBySessionId(sheets, config, session_id) {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.PENDING_APPRAISALS_SPREADSHEET_ID,
+    range: `${config.PENDING_APPRAISALS_SHEET_NAME}!C:C`
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex(row => row[0] === session_id);
+  
+  return rowIndex === -1 ? null : rowIndex + 1; // Convert to 1-based index if found
+}
+
+async function updateCell(sheets, config, rowNumber, column, value) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: config.PENDING_APPRAISALS_SPREADSHEET_ID,
+    range: `${config.PENDING_APPRAISALS_SHEET_NAME}!${column}${rowNumber}`,
+    valueInputOption: 'USER_ENTERED',
+    resource: {
+      values: [[value]]
+    }
+  });
+}
 
 class AppraisalSheetsClient {
   constructor(config) {
@@ -24,10 +53,10 @@ class AppraisalSheetsClient {
 
       if (rowNumber) {
         console.log('Updating existing row:', { row_number: rowNumber });
-        await updateExistingSubmission(sheets, this.config, data, rowNumber);
+        await this.updateExistingSubmission(sheets, data, rowNumber);
       } else {
         console.log('Inserting new row for session:', data.session_id);
-        await insertNewSubmission(sheets, this.config, data);
+        await this.insertNewSubmission(sheets, data);
       }
 
       console.log('Submission recorded successfully:', {
@@ -37,6 +66,49 @@ class AppraisalSheetsClient {
     } catch (error) {
       console.error('Error recording submission:', error);
       throw new Error('Failed to record submission in Google Sheets');
+    }
+  }
+
+  async insertNewSubmission(sheets, data) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+      range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!A:I`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [[
+          new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' }),
+          data.appraisalType || 'Regular',
+          data.session_id,
+          data.customer_email,
+          data.customer_name,
+          'SUBMITTED',
+          data.wordpressEditUrl || '',
+          '',  // Column H (reserved)
+          data.description || ''  // Column I (description)
+        ]]
+      }
+    });
+  }
+
+  async updateExistingSubmission(sheets, data, rowNumber) {
+    // Update status and WordPress URL
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: this.config.PENDING_APPRAISALS_SPREADSHEET_ID,
+      resource: {
+        valueInputOption: 'USER_ENTERED',
+        data: [
+          {
+            range: `${this.config.PENDING_APPRAISALS_SHEET_NAME}!F${rowNumber}:G${rowNumber}`,
+            values: [['SUBMITTED', data.wordpressEditUrl || '']]
+          }
+        ]
+      }
+    });
+
+    // Update description if provided
+    if (data.description) {
+      await updateCell(sheets, this.config, rowNumber, 'I', data.description);
     }
   }
 
@@ -90,7 +162,13 @@ class AppraisalSheetsClient {
         return;
       }
 
-      await updateMediaUrls(sheets, this.config, rowNumber, mediaUrls);
+      const urlsJson = JSON.stringify({
+        main: mediaUrls.main || '',
+        age: mediaUrls.age || '',
+        signature: mediaUrls.signature || ''
+      });
+
+      await updateCell(sheets, this.config, rowNumber, 'O', urlsJson);
       
       console.log('Updated WordPress media URLs:', {
         session_id,

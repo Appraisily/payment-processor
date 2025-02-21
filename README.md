@@ -1,16 +1,17 @@
 # Payment Processor Service
 
-A Node.js service that handles Stripe payments, art appraisal workflows, and WordPress integration. Built with modular design principles and best practices for secure payment processing and data management.
+A Node.js service that handles Stripe payments, records transactions, manages art appraisal workflows, and integrates with WordPress for content management. Built following modular design principles and best practices for secure payment processing and data management.
 
 ## Features
 
 ### Payment Processing
-- Stripe webhook handling for test and live modes
+- Stripe webhook handling for both test and live modes
 - Secure payment verification with signature validation
 - Automatic transaction recording in Google Sheets
-- Support for multiple payment types (Regular, Insurance, Tax)
+- Support for multiple payment link types (Regular, Insurance, IRS, Bulk)
 - Bulk appraisal support with dynamic pricing
 - Session-based appraisal management
+- Flexible pricing based on appraisal type
 
 ### Data Management
 - Google Sheets integration for sales and appraisals tracking
@@ -71,25 +72,38 @@ A Node.js service that handles Stripe payments, art appraisal workflows, and Wor
 
 ## API Endpoints
 
-### Stripe Webhooks
-- `POST /stripe-webhook`: Live mode webhook handler
-- `POST /stripe-webhook-test`: Test mode webhook handler
+### 1. Stripe Webhooks
+- `POST /stripe-webhook` - Live mode webhook handler
+- `POST /stripe-webhook-test` - Test mode webhook handler
 
-### Stripe API
-- `GET /stripe/session/:sessionId`: Retrieve session information
-  - Requires `x-shared-secret` header for authentication
+### 2. Stripe API
+- `GET /stripe/session/:sessionId` - Retrieve session information
+  - Requires `x-shared-secret` header
+  - Returns customer details, amount, currency, and payment status
 
-### Bulk Appraisals
-- `POST /api/bulk-appraisals/init`: Initialize bulk session
-- `POST /api/bulk-appraisals/upload/:sessionId`: Upload file
-- `GET /api/bulk-appraisals/session/:sessionId`: Get session status
-- `PUT /api/bulk-appraisals/session/:sessionId/email`: Update email
-- `POST /api/bulk-appraisals/finalize`: Finalize session
+### 3. Bulk Appraisals
+- `POST /api/bulk-appraisals/init` - Initialize bulk session
+- `POST /api/bulk-appraisals/upload/:sessionId` - Upload file to session
+- `DELETE /api/bulk-appraisals/upload/:sessionId/:fileId` - Delete file from session
+- `GET /api/bulk-appraisals/session/:sessionId` - Get session status
+- `PUT /api/bulk-appraisals/session/:sessionId/email` - Update session email
+- `PUT /api/bulk-appraisals/description` - Update item description
+- `POST /api/bulk-appraisals/finalize/:sessionId` - Finalize session
 
-### Individual Appraisals
-- `POST /api/appraisals`: Submit appraisal
-  - Supports multiple image uploads
+### 4. Individual Appraisals
+- `POST /api/appraisals` - Submit individual appraisal
+  - Supports multipart form data
+  - Handles multiple image uploads (main, signature, age)
   - Maximum file size: 10MB per file
+
+### 5. Test Endpoints
+- `GET /api/appraisals/test-wp/:postId` - Test WordPress post structure
+  - Development/debugging endpoint
+  - Returns WordPress post data structure
+
+### 6. Health Check
+- `GET /` - Service health check endpoint
+  - Returns "Service is healthy" when operational
 
 ## Configuration
 
@@ -106,6 +120,7 @@ A Node.js service that handles Stripe payments, art appraisal workflows, and Wor
 - `WORDPRESS_API_URL`
 - `WORDPRESS_USERNAME`
 - `WORDPRESS_APP_PASSWORD`
+- `SHARED_SECRET`
 
 ### Environment Variables
 - `PORT` (default: 8080)
