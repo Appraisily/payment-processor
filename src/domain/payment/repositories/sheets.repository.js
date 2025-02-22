@@ -64,13 +64,15 @@ class SheetsRepository {
     const auth = await this.getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
     
-    // Get items count from line items
+    // Get items count and appraisal type for bulk orders
     const itemCount = session.line_items?.data[0]?.quantity || 0;
+    const appraisalType = session.metadata?.appraisal_type || 'Regular';
     
     console.log('Recording pending appraisal with session data:', {
       id: session.id,
       is_bulk_order: isBulkOrder,
       items_count: itemCount,
+      appraisal_type: appraisalType,
       line_items: session.line_items?.data.map(item => ({
         quantity: item.quantity,
         amount_total: item.amount_total,
@@ -80,7 +82,10 @@ class SheetsRepository {
       client_reference_id: session.client_reference_id
     });
     
-    let productName = isBulkOrder ? 'Bulk' : (this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product');
+    let productName = isBulkOrder ? 
+      `Bulk_${appraisalType}_${itemCount}` : 
+      (this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product');
+
     let bucketPath = '';
 
     if (isBulkOrder) {
@@ -100,7 +105,7 @@ class SheetsRepository {
           session.id,
           session.customer_details?.email || '',
           session.customer_details?.name || '',
-          isBulkOrder ? `BULK ORDER (${itemCount} items)` : 'PENDING INFO',
+          'Pending',
           bucketPath
         ]],
       },
