@@ -7,6 +7,13 @@ function setupWebhookRoutes(app, config) {
   const stripeClient = new StripeClient(config);
   const paymentService = new PaymentService(config);
 
+  async function getFullSession(sessionId, mode) {
+    const client = stripeClient.getClient(mode);
+    return await client.checkout.sessions.retrieve(sessionId, {
+      expand: ['customer_details', 'line_items']
+    });
+  }
+
   const webhookMiddleware = express.raw({
     type: 'application/json',
     verify: (req, res, buf) => {
@@ -28,7 +35,9 @@ function setupWebhookRoutes(app, config) {
       );
 
       if (event.type === 'checkout.session.completed') {
-        await paymentService.processCheckoutSession(event.data.object, mode);
+        // Get full session details including line items
+        const fullSession = await getFullSession(event.data.object.id, mode);
+        await paymentService.processCheckoutSession(fullSession, mode);
         res.status(200).send('Webhook processed successfully');
       } else {
         console.log(`Ignoring event type ${event.type}`);
