@@ -25,6 +25,13 @@ class NotificationService {
   }
 
   async publishFinalizationMessage(sessionId, appraisalType, sessionStatus, customerInfo) {
+    console.log('Publishing bulk appraisal finalization message:', {
+      session_id: sessionId,
+      appraisal_type: appraisalType,
+      items_count: sessionStatus.session.items.length,
+      customer_email: customerInfo?.email || sessionStatus.session.customer_email
+    });
+
     await this.publishToCRM({
       crmProcess: "bulkAppraisalFinalized",
       customer: {
@@ -34,7 +41,9 @@ class NotificationService {
       appraisal: {
         type: appraisalType,
         itemCount: sessionStatus.session.items.length,
-        sessionId: sessionId
+        itemCount: sessionStatus.session.items.length,
+        sessionId: sessionId,
+        status: 'paid'
       },
       metadata: {
         origin: "payment-processor",
@@ -42,6 +51,8 @@ class NotificationService {
         timestamp: Math.floor(Date.now() / 1000)
       }
     });
+
+    console.log('Bulk appraisal finalization message published successfully');
   }
 }
 
