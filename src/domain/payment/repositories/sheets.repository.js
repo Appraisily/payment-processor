@@ -63,19 +63,27 @@ class SheetsRepository {
   async recordPendingAppraisal(session, isBulkOrder) {
     const auth = await this.getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
+    
+    console.log('Recording pending appraisal with session data:', {
+      id: session.id,
+      is_bulk_order: isBulkOrder,
+      line_items: session.line_items?.data.map(item => ({
+        quantity: item.quantity,
+        amount_total: item.amount_total,
+        description: item.description
+      })),
+      metadata: session.metadata,
+      client_reference_id: session.client_reference_id
+    });
 
-    let productName = this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product';
-    let itemCount = 1;
+    // Get items count from line items
+    const itemCount = session.line_items?.data[0]?.quantity || 1;
+    let productName = isBulkOrder ? 'Bulk' : (this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product');
     let bucketPath = '';
 
     if (isBulkOrder) {
       const bulkSessionId = session.client_reference_id.replace('bulk_', '');
       bucketPath = `${this.config.GCS_BULK_APPRAISAL_BUCKET}/${session.client_reference_id}`;
-      const StorageRepository = require('../../bulk-appraisal/repositories/storage.repository');
-      const storageRepo = new StorageRepository(this.config);
-      const files = await storageRepo.getSessionFiles(bulkSessionId);
-      itemCount = files.length;
-      productName = `Bulk Appraisal (${itemCount} items) - ${session.metadata?.appraisal_type || 'Regular'}`;
     }
 
     await sheets.spreadsheets.values.append({
