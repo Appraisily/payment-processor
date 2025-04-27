@@ -84,7 +84,7 @@ class SheetsRepository {
     
     let productName = isBulkOrder ? 
       `Bulk_${appraisalType}_${itemCount}` : 
-      (this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Unknown Product');
+      (this.config.PAYMENT_LINKS[session.payment_link]?.productName || 'Regular');
 
     let bucketPath = '';
 
