@@ -60,7 +60,7 @@ class Config {
       CHATGPT_CHAT_URL: process.env.CHATGPT_CHAT_URL || 'https://chatgpt.com/share/e/66e9631f-d6e8-8005-8d38-bc44d9287406',
       RESOLUTION_LINK: process.env.RESOLUTION_LINK || 'https://console.cloud.google.com/functions/details/us-central1/stripeWebhookHandler?project=civil-forge-403609',
       ASSIGNED_TO: process.env.ASSIGNED_TO || 'Your Name',
-      APPRAISERS_BACKEND_URL: process.env.APPRAISERS_BACKEND_URL || 'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
+      APPRAISERS_BACKEND_URL: process.env.APPRAISERS_BACKEND_URL || 'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending',
 
       // Payment Links Configuration
       PAYMENT_LINKS: {

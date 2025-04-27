@@ -19,7 +19,7 @@ class AppraisersBackendClient {
       });
 
       const response = await axios.post(
-        'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending-appraisal',
+        'https://appraisers-backend-856401495068.us-central1.run.app/api/update-pending',
         {
           session_id: data.session_id,
           customer_email: data.customer_email,
