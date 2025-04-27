@@ -11,7 +11,7 @@ class WordPressRepository {
     try {
       const post = await createPost({
         title: `Art Appraisal Request - ${submission.session_id}`,
-        content: submission.description || ' ',
+        content: ' ',
         status: 'draft',
         type: 'appraisals'
       }, this.config);
