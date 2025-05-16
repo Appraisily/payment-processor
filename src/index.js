@@ -23,8 +23,8 @@ async function initializeApp() {
           return callback(null, true);
         }
         
-        // Allow all webcontainer domains and appraisily.com
-        if (origin.endsWith('appraisily.com') || 
+        // Allow all appraisily.com domains and development domains
+        if (origin.match(/^https?:\/\/[^/]+\.appraisily\.com$/) || 
             origin.includes('webcontainer') || 
             origin.includes('stackblitz.io') ||
             process.env.NODE_ENV !== 'production') {
